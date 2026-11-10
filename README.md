@@ -21,6 +21,18 @@ npm install
 npm start
 ```
 
+## Masaüstü uygulamasını paketleme
+
+Kasa ve Yemeksepeti paneli aynı pencerede açılır, localhost sunucusunu uygulama kendisi başlatır.
+
+```bash
+npm install
+npm run paketle:win
+npm run paketle:mac
+```
+
+Çıktı `dist/` klasörüne yazılır. Windows için `dist/Cini Kasa-win32-x64/Cini Kasa.exe` çalıştırılır, Node.js gerekmez.
+
 ## Vercel'de çalıştırma
 
 Vercel sürümünde kayıtlar Postgres veritabanında durur, girişte şifre sorulur ve cihazlar birkaç saniyede bir senkronize olur.

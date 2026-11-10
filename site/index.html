@@ -702,13 +702,14 @@ function dayListHtml(){
   let l=salesOf(k);
   if(!l.length&&S.dayListKey===k&&S.dayList)l=S.dayList;
   if(!l.length)return`<div class="note">${S.dayListKey===k?'Bu günün fiş ayrıntısı yok. Fişler 90 gün saklanır, ciro toplamları kalıcıdır.':'Fişler yükleniyor.'}</div>`;
-  return`<div class="tbl-w"><table><tr><th>No</th><th>Saat</th><th>Masa</th><th>Kasiyer</th><th>Ödeme</th><th class="r">Tutar</th></tr>${l.slice().sort((a,b)=>b.ts-a.ts).map(s=>`<tr data-a="showSale" data-id="${s.id}" style="cursor:pointer"><td class="mono">${esc(s.no)}</td><td>${new Date(s.ts).toTimeString().slice(0,5)}</td><td>${esc(s.label)}</td><td>${esc(s.waiter)}</td><td>${(s.pay||[]).map(p=>PAY[p.m]).join(', ')}</td><td class="r ${s.voided?'vd':''}">${tl(s.total)}</td></tr>`).join('')}</table></div>`;
+  return`<div class="tbl-w"><table><tr><th>No</th><th>Saat</th><th>Masa</th><th>Kasiyer</th><th>Ödeme</th><th class="r">Tutar</th><th></th></tr>${l.slice().sort((a,b)=>b.ts-a.ts).map(s=>`<tr data-a="showSale" data-id="${s.id}" style="cursor:pointer"><td class="mono">${esc(s.no)}</td><td>${new Date(s.ts).toTimeString().slice(0,5)}</td><td>${esc(s.label)}</td><td>${esc(s.waiter)}</td><td>${(s.pay||[]).map(p=>PAY[p.m]).join(', ')}</td><td class="r ${s.voided?'vd':''}">${tl(s.total)}</td><td class="r"><button class="btn sm" data-a="fisYazdirId" data-id="${s.id}" aria-label="Fiş ${esc(s.no)} yazdır">Yazdır</button></td></tr>`).join('')}</table></div>`;
 }
 function afterRapor(){
   drawChart();
   if(S.rep.p==='gun'&&S.dayListKey!==S.rep.d&&!salesOf(S.rep.d).length){
     const k=S.rep.d;S.dayListKey=k;S.dayList=null;
-    D.where('sales','day','==',k).then(l=>{S.dayList=l;S.sales=Object.assign(S.sales,Object.fromEntries(l.map(s=>[s.id,s])));const e=$('#dayList');if(e)e.innerHTML=dayListHtml()}).catch(()=>{});
+    // Canlı dinleyici son 10 günü getirir; daha eski günün fişleri gelince ciro kutuları da yeniden hesaplanır.
+    D.where('sales','day','==',k).then(l=>{S.dayList=l;S.sales=Object.assign(S.sales,Object.fromEntries(l.map(s=>[s.id,s])));if(l.length&&S.rep.d===k)render();else{const e=$('#dayList');if(e)e.innerHTML=dayListHtml()}}).catch(()=>{});
   }
 }
 const nice=m=>{if(m<=0)return 1000;const e=Math.pow(10,Math.floor(Math.log10(m))),f=m/e;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*e};
@@ -1173,6 +1174,7 @@ const A={
   admTab(e){S.adm.tab=e.v;S.arm=null;if(e.v==='ag')fetch('/api/ag').then(r=>r.ok?r.json():null).then(a=>{S.ag=a;render()}).catch(()=>{});if(e.v==='fis'&&window.kasaApp)kasaApp.yazicilar().then(l=>{S.yazicilar=l;render()}).catch(()=>{});render()},
   fisAdisyon(){const o=S.orders[S.order];if(o?.items.length)return fisYazdir(receiptHtml(adisyonFis(o)))},
   fisSale(){return fisYazdir(receiptHtml(S.modal.sale))},
+  fisYazdirId(e){const s=S.sales[e.id]||S.dayList?.find(x=>x.id===e.id);if(s)return fisYazdir(receiptHtml(s))},
   fisOto(e){return saveCfg({fisOto:e.v?1:0})},
   fisTest(){return fisYazdir(receiptHtml(ornekFis()))},
   fisHazir(e){return saveCfg({fisW:+e.w,fisH:+e.h,fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},

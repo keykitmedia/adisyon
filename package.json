@@ -5,7 +5,9 @@
   "private": true,
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "paketle:mac": "electron-packager . \"Cini Kasa\" --platform=darwin --arch=arm64 --out=dist --overwrite --ignore=\"^/(node_modules|veri|dist|api|lib)\"",
+    "paketle:win": "electron-packager . \"Cini Kasa\" --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/(node_modules|veri|dist|api|lib)\""
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
