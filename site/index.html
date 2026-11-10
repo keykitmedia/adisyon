@@ -210,8 +210,8 @@ h1,h2,h3{margin:0;font-family:var(--f-d);font-weight:600;letter-spacing:.01em}
 .pl-h{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:32px;margin-bottom:5px}
 .ok{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-radius:8px;background:var(--c2);font-weight:600}
 .payb{min-height:56px;flex:1 1 220px;font:700 21px var(--f-d)}
-.fisg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:start}
-.fison{position:sticky;top:0}.fisg .seg{flex-wrap:wrap}.kagit{background:var(--panel2);padding:14px;border-radius:8px;max-height:70vh;overflow:auto;display:flex;justify-content:center}
+.fisg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:14px;align-items:start}
+.fison{position:sticky;top:0}.fisg .seg{flex-wrap:wrap}.kagit{background:var(--panel2);padding:14px;border-radius:8px;max-height:70vh;max-width:min(520px,100%);overflow:auto;display:flex;justify-content:center}
 .kagit iframe{display:block;border:0;background:#fff;box-shadow:0 0 0 1px #9a9a9a,0 2px 8px rgba(0,0,0,.25);zoom:1.5}
 .imgf{display:flex;gap:12px;align-items:center}
 .imgf img{width:110px;height:70px;object-fit:cover;border-radius:7px;flex:none}
@@ -861,9 +861,12 @@ function receiptHtml(s,feed){
 }
 /* Fiş yazdırma: 80 ve 58 mm rulo. Uygulamada doğrudan seçili yazıcıya, tarayıcıda yazdırma penceresiyle gider. */
 /* Yazı alanı ve sol boşluk yazıcıya göre Yönetim'den ayarlanır; 58 mm yazıcılar çoğu zaman sağ kenarı basamaz. */
+/* Her ayarın geçerli aralığı; dışındaki değer kaydedilmez, kayıtlıysa varsayılan kullanılır. */
+const FIS_SINIR={fisW:[30,120,'Kağıt eni'],fisH:[0,2000,'Kağıt boyu'],fisAlan:[15,120,'Yazı alanı eni'],fisSol:[0,30,'Soldan boşluk'],fisUst:[0,50,'Üstten boşluk'],fisYazi:[6,24,'Yazı boyutu']};
 const fisOlcu=()=>{
-  const c=S.cfg,v=(x,d)=>x!==''&&x!=null&&Number.isFinite(+x)?+x:d,en=v(c.fisW,80),dar=en<70;
-  return{en,boy:v(c.fisH,0),alan:v(c.fisAlan,dar?en-14:en-8),sol:v(c.fisSol,dar?1:4),ust:v(c.fisUst,2),yazi:v(c.fisYazi,dar?10.5:12.5)};
+  const c=S.cfg,v=(k,d)=>{const x=c[k],[a,b]=FIS_SINIR[k];return x!==''&&x!=null&&Number.isFinite(+x)&&+x>=a&&+x<=b?+x:d};
+  const en=v('fisW',80),dar=en<70,alan=Math.min(v('fisAlan',dar?en-14:en-8),en);
+  return{en,boy:v('fisH',0),alan,sol:Math.min(v('fisSol',dar?1:4),Math.max(0,en-alan)),ust:v('fisUst',2),yazi:v('fisYazi',dar?10.5:12.5)};
 };
 /* Kağıt boyu yazıcının sürücüdeki kağıdıyla aynı olmalı; farklıysa tarayıcı fişi küçültüp kaydırır. */
 function fisBelge(ic,o=fisOlcu(),onizleme){
@@ -910,7 +913,7 @@ function fisAyarHtml(c){
     <div class="field">Ödeme sonrası yazdır<div class="seg">${[['1','Açık'],['','Kapalı']].map(([v,l])=>`<button data-a="fisOto" data-v="${v}" class="${(c.fisOto?'1':'')===v?'on':''}">${l}</button>`).join('')}</div></div>
     ${window.kasaApp?`<label class="field full">Yazıcı<select id="fisY" data-c="fisY"><option value="">Varsayılan yazıcı</option>${(S.yazicilar||[]).map(y=>`<option value="${esc(y.name)}"${y.name===c.fisY?' selected':''}>${esc(y.displayName||y.name)}</option>`).join('')}${c.fisY&&!(S.yazicilar||[]).some(y=>y.name===c.fisY)?`<option selected value="${esc(c.fisY)}">${esc(c.fisY)} (bağlı değil)</option>`:''}</select></label>`:'<p class="full" style="margin:0;color:var(--mut)">Tarayıcının yazdırma penceresinde kenar boşluklarını <b>Yok</b>, ölçeği <b>%100</b> yapın. Kağıt boyutu yazıcınızın kağıdı olmalı.</p>'}
   </div>
-  <div class="acts" style="margin-top:10px"><button class="btn l" data-a="fisSifirla">Varsayılana Dön</button><button class="btn pri" data-a="fisTest">Deneme Fişi Yazdır</button></div></div>
+  <div class="acts" style="margin-top:10px"><button class="btn l" data-a="fisSifirla">Tümünü Sıfırla</button><button class="btn pri" data-a="fisTest">Deneme Fişi Yazdır</button></div></div>
   </div>
   <div class="pnl fison"><h2>Önizleme</h2><p style="margin:0 0 8px;color:var(--mut)">${o.en} × ${o.boy||'otomatik'} mm · kırmızı çizgi yazı alanı</p>
     <div class="kagit"><iframe title="Fiş önizlemesi" style="width:${o.en}mm;height:${o.boy?o.boy+'mm':'120mm'}" srcdoc="${esc(fisBelge(receiptHtml(ornekFis()),o,true))}"${o.boy?'':` onload="this.style.height=this.contentDocument.documentElement.scrollHeight+'px'"`}></iframe></div></div>
@@ -1172,8 +1175,8 @@ const A={
   fisOto(e){return saveCfg({fisOto:e.v?1:0})},
   fisTest(){return fisYazdir(receiptHtml(ornekFis()))},
   fisHazir(e){return saveCfg({fisW:+e.w,fisH:+e.h,fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},
-  fisKaydir(e){const o=fisOlcu(),k=e.k,ad={fisSol:'sol',fisUst:'ust',fisAlan:'alan',fisYazi:'yazi'}[k];return saveCfg({[k]:Math.max(0,Math.round((o[ad]+ +e.n)*10)/10)})},
-  fisSifirla(){return saveCfg({fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},
+  fisKaydir(e){const o=fisOlcu(),k=e.k,ad={fisSol:'sol',fisUst:'ust',fisAlan:'alan',fisYazi:'yazi'}[k],[a,b]=FIS_SINIR[k];return saveCfg({[k]:Math.min(b,Math.max(a,Math.round((o[ad]+ +e.n)*10)/10))})},
+  fisSifirla(){return saveCfg({fisW:'',fisH:'',fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},
   ysOpen(){if(!window.open('https://partner-app.yemeksepeti.com/live-orders','ys-panel'))toast('Tarayıcı pencereyi engelledi. Yemeksepeti Panel kısayolunu kullanın.',1)},
   async ysKey(){await saveCfg({ysKey:[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(16).padStart(2,'0')).join('')})},
   async ysOff(){S.ysBeat=null;await saveCfg({ysKey:''})},
@@ -1243,7 +1246,10 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.dataset.c==='restore'){const f=e.target.files[0];e.target.value='';if(f)geriYukle(f);return}
-  if(e.target.dataset.c==='fisAyar'){const k=e.target.dataset.k,v=parseFloat(String(e.target.value).replace(',','.'));if(Number.isFinite(v)&&v>=0)saveCfg({[k]:v}).catch(()=>{});return}
+  if(e.target.dataset.c==='fisAyar'){
+    const k=e.target.dataset.k,v=parseFloat(String(e.target.value).replace(',','.')),[a,b,ad]=FIS_SINIR[k];
+    if(!Number.isFinite(v)||v<a||v>b){toast(`${ad} ${a} ile ${b} arasında olmalı.`,1);render();return}
+    saveCfg(k==='fisW'?{fisW:v,fisAlan:'',fisSol:''}:{[k]:v}).catch(()=>{});return}
   if(e.target.dataset.c==='fisY'){saveCfg({fisY:e.target.value}).catch(()=>{});return}
   const t=e.target,k=t.dataset.c;if(!k)return;
   if(k==='waiter'){S.waiter=t.value;try{localStorage.setItem('cini-waiter',t.value)}catch{}}
