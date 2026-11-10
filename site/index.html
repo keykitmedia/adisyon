@@ -791,6 +791,7 @@ function vYonetim(){
   if(t==='veri')b=`<div class="dgrid">
     <div class="pnl"><h2>Yedek al</h2><p>Ürünler, masalar, ayarlar ve ciro özetleri tek bir JSON dosyasına yazılır.</p><button class="btn" data-a="backup">Yedek İndir</button></div>
     <div class="pnl"><h2>Yedekten geri yükle</h2><p>Kasanın yedek dosyasını veya <span class="mono">Cini Kasa Yedek</span> klasöründeki günlük yedeği seçin. Aynı kayıtların üzerine yazılır, diğerleri kalır.</p><label class="btn">Yedek Dosyası Seç<input type="file" accept=".json,application/json" data-c="restore" hidden></label></div>
+    <div class="pnl"><h2>Raporları sıfırla</h2><p>Tüm fişler, günlük, aylık ve yıllık ciro ile Z raporu numarası silinir. Ürünler, masalar, ayarlar ve açık adisyonlar kalır. Bu işlem geri alınamaz; önce yedek indirmeniz önerilir.</p><button class="btn dan${S.arm==='rapor'?' arm':''}" data-a="raporSifirla">${S.arm==='rapor'?'Evet, tüm raporları sil':'Raporları Sıfırla'}</button></div>
     <div class="pnl"><h2>Eski fişleri temizle</h2><p>90 günden eski fiş ayrıntıları silinir. Ciro toplamları kalır. Z raporu alınınca bu işlem otomatik yapılır.</p><button class="btn" data-a="prune">Şimdi Temizle</button></div>
     ${c.demo?`<div class="pnl"><h2>Örnek verileri sil</h2><p>Örnek satışlar, açık örnek adisyonlar ve geçmiş ciro silinir. Ürünler, masalar ve ayarlar kalır. Bu işlem geri alınamaz.</p><button class="btn dan${S.arm==='demo'?' arm':''}" data-a="demoDel">${S.arm==='demo'?'Evet, kalıcı olarak sil':'Örnek Verileri Sil'}</button></div>`:''}
     <div class="pnl"><h2>Veriler nerede?</h2><p>${S.local?'Şu an veriler yalnızca bu tarayıcıda duruyor. Yedek almayı unutmayın.':'Veriler paylaşımlı veritabanında. Bu sayfayı açan yetkili cihazlar aynı masaları canlı görür.'}</p></div></div>`;
@@ -1193,6 +1194,18 @@ const A={
     const{cfg,cats,prods,tables,stats,orders}=S;
     const sales=Object.fromEntries((await D.where('sales','day','>=','0000').catch(()=>Object.values(S.sales))).map(s=>[s.id,s]));
     download(`cini-kasa-yedek-${dk()}.json`,JSON.stringify({cfg,cats,prods,tables,stats,orders,sales},null,1));
+  },
+  async raporSifirla(){
+    if(S.arm!=='rapor'){S.arm='rapor';render();return}
+    S.arm=null;
+    if(!confirm('Tüm fişler ve ciro geçmişi kalıcı olarak silinecek. Emin misiniz?')){render();return}
+    toast('Raporlar siliniyor');
+    const fis=new Set([...(await D.where('sales','day','>=','0000').catch(()=>[])).map(s=>s.id),...Object.keys(S.sales)]);
+    let hata=0;
+    for(const id of fis){try{await D.del('sales',id)}catch{hata++}delete S.sales[id]}
+    for(const id of Object.keys(S.stats)){try{await D.del('stats',id)}catch{hata++}delete S.stats[id]}
+    await saveCfg({zNo:0}).catch(()=>{hata++});
+    render();toast(hata?`Raporlar silindi, ${hata} kayıt silinemedi.`:'Raporlar sıfırlandı',!!hata);
   },
   async prune(){const n=await pruneOld();toast(n?`${Math.min(n,200)} eski fiş silindi`:'Silinecek eski fiş yok')},
   async demoDel(){
