@@ -21,6 +21,20 @@ npm install
 npm start
 ```
 
+## Vercel'de çalıştırma
+
+Vercel sürümünde kayıtlar Postgres veritabanında durur, girişte şifre sorulur ve cihazlar birkaç saniyede bir senkronize olur.
+
+1. Vercel'de **Add New > Project** ile bu depoyu içe aktarın. Framework Preset: **Other**. Diğer ayarlar `vercel.json` içinde.
+2. Projede **Storage > Create Database** ile bir Postgres veritabanı (ör. Neon) oluşturup projeye bağlayın. `DATABASE_URL` kendiliğinden eklenir. Başka bir Postgres kullanılacaksa bağlantı adresini `DATABASE_URL` olarak elle ekleyin.
+3. **Settings > Environment Variables** bölümüne ekleyin:
+   - `KASA_SIFRE`: kasaya giriş şifresi, en az 12 karakter.
+   - `KASA_GIZLI`: rastgele uzun bir metin, ör. `openssl rand -hex 32` çıktısı.
+4. **Deployments** bölümünden son dağıtımı **Redeploy** edin.
+5. Siteye girin. Eski kayıtları taşımak için **Yönetim > Veri > Yedekten geri yükle** ile kasanın yedek dosyasını seçin.
+
+Tablolar ilk istekte kendiliğinden kurulur; veritabanı boşsa menü ve masalar `baslangic.json` dosyasından yüklenir.
+
 ## Veriler
 
 - `node sunucu.js` ile çalışınca kayıtlar `veri/` klasöründe durur.

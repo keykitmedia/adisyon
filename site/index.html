@@ -782,7 +782,8 @@ function vYonetim(){
     <p style="margin:0 0 10px;color:var(--mut)">Bu kodu Chrome eklentisine girin. Kodu bilen eklenti bu kasaya sipariş aktarabilir.</p>
     ${c.ysKey?`<div class="ent num" style="font-size:18px;text-align:left;user-select:all">${esc(c.ysKey)}</div>`:''}
     <div class="acts" style="margin-top:10px"><button class="btn" data-a="ysKey">${c.ysKey?'Yeni kod üret':'Kod üret'}</button>${c.ysKey?'<button class="btn dan" data-a="ysOff">Kapat</button>':''}</div></div>`;
-  if(t==='ag')b=S.ag?`<div class="pnl" style="max-width:640px"><h2>Ağdan giriş</h2>
+  if(t==='ag'&&S.ag?.bulut)b=`<div class="pnl" style="max-width:640px"><h2>Bulut sürümü</h2><p style="margin:0;color:var(--mut)">Bu kasa internette çalışıyor. Telefon, tablet veya bilgisayardan bu sitenin adresiyle girilir. Giriş şifresi Vercel'de <span class="mono">KASA_SIFRE</span> ayarından değiştirilir.</p></div>`;
+  else if(t==='ag')b=S.ag?`<div class="pnl" style="max-width:640px"><h2>Ağdan giriş</h2>
     <p style="margin:0 0 10px;color:var(--mut)">Aynı Wi-Fi'deki telefon, tablet veya bilgisayarın tarayıcısına şu adresi yazın:</p>
     <div class="ent num" style="font-size:18px;text-align:left;user-select:all">${S.ag.adresler.map(a=>`http://${esc(a)}:${S.ag.port}`).join('<br>')||'Ağ bağlantısı yok'}</div>
     <p style="margin:10px 0;color:var(--mut)">IP değişirse şu adres de çalışır: <b class="mono">http://${esc(S.ag.ad)}:${S.ag.port}</b></p>
@@ -792,6 +793,7 @@ function vYonetim(){
     <form class="fg" data-f="staff" style="margin-top:10px;grid-template-columns:minmax(0,1fr) auto"><input class="inp" id="newStaff" name="n" placeholder="Yeni personel adı" aria-label="Yeni personel adı" required><button class="btn pri">Ekle</button></form></div>`;
   if(t==='veri')b=`<div class="dgrid">
     <div class="pnl"><h2>Yedek al</h2><p>Ürünler, masalar, ayarlar ve ciro özetleri tek bir JSON dosyasına yazılır.</p><button class="btn" data-a="backup">Yedek İndir</button></div>
+    <div class="pnl"><h2>Yedekten geri yükle</h2><p>Kasanın yedek dosyasını veya <span class="mono">Cini Kasa Yedek</span> klasöründeki günlük yedeği seçin. Aynı kayıtların üzerine yazılır, diğerleri kalır.</p><label class="btn">Yedek Dosyası Seç<input type="file" accept=".json,application/json" data-c="restore" hidden></label></div>
     <div class="pnl"><h2>Eski fişleri temizle</h2><p>90 günden eski fiş ayrıntıları silinir. Ciro toplamları kalır. Z raporu alınınca bu işlem otomatik yapılır.</p><button class="btn" data-a="prune">Şimdi Temizle</button></div>
     ${c.demo?`<div class="pnl"><h2>Örnek verileri sil</h2><p>Örnek satışlar, açık örnek adisyonlar ve geçmiş ciro silinir. Ürünler, masalar ve ayarlar kalır. Bu işlem geri alınamaz.</p><button class="btn dan${S.arm==='demo'?' arm':''}" data-a="demoDel">${S.arm==='demo'?'Evet, kalıcı olarak sil':'Örnek Verileri Sil'}</button></div>`:''}
     <div class="pnl"><h2>Veriler nerede?</h2><p>${S.local?'Şu an veriler yalnızca bu tarayıcıda duruyor. Yedek almayı unutmayın.':'Veriler paylaşımlı veritabanında. Bu sayfayı açan yetkili cihazlar aynı masaları canlı görür.'}</p></div></div>`;
@@ -983,6 +985,17 @@ const download=async(name,data)=>{
 function pruneOld(){
   return D.where('sales','day','<',addDays(dk(),-90)).then(async l=>{for(const s of l.slice(0,200)){await D.del('sales',s.id);delete S.sales[s.id]}return l.length});
 }
+/* Kasa yedeği veya sunucunun veri dosyası kabul edilir; kayıtlar tek tek yazılır. */
+async function geriYukle(file){
+  let j;try{j=JSON.parse(await file.text())}catch{toast('Dosya okunamadı. Kasa yedeği seçin.',1);return}
+  const k=j.config?j:{config:j.cfg?{app:j.cfg}:{},categories:j.cats,products:j.prods,tables:j.tables,stats:j.stats,orders:j.orders,sales:j.sales};
+  const is=[];for(const c of['config','categories','products','tables','stats','orders','sales'])for(const[id,v]of Object.entries(k[c]||{}))if(v&&typeof v==='object')is.push([c,id,v]);
+  if(!is.length){toast('Dosyada kasa kaydı bulunamadı.',1);return}
+  if(!confirm(`${is.length} kayıt yüklenecek. Aynı kayıtların üzerine yazılır. Devam edilsin mi?`))return;
+  let n=0;
+  for(const[c,id,v]of is){const{id:_,...d}=v;try{await D.set(c,id,d);n++}catch{}if(n%25===0)toast(`Yükleniyor: ${n} / ${is.length}`)}
+  toast(n===is.length?`${n} kayıt yüklendi`:`${n} / ${is.length} kayıt yüklendi, kalanlar yazılamadı`,n!==is.length);
+}
 async function uploadImg(file){
   const st=$('#p-st');if(st)st.textContent='Görsel yükleniyor';
   try{
@@ -1140,8 +1153,9 @@ const A={
   },
   rmStaff(e){const st=[...S.cfg.staff];st.splice(+e.n,1);saveCfg({staff:st})},
   async backup(){
-    const{cfg,cats,prods,tables,stats}=S;
-    download(`cini-kasa-yedek-${dk()}.json`,JSON.stringify({cfg,cats,prods,tables,stats},null,1));
+    const{cfg,cats,prods,tables,stats,orders}=S;
+    const sales=Object.fromEntries((await D.where('sales','day','>=','0000').catch(()=>Object.values(S.sales))).map(s=>[s.id,s]));
+    download(`cini-kasa-yedek-${dk()}.json`,JSON.stringify({cfg,cats,prods,tables,stats,orders,sales},null,1));
   },
   async prune(){const n=await pruneOld();toast(n?`${Math.min(n,200)} eski fiş silindi`:'Silinecek eski fiş yok')},
   async demoDel(){
@@ -1194,6 +1208,7 @@ document.addEventListener('input',e=>{
   const k=e.target.dataset.i;if(k==='q'){S.q=e.target.value;render()}else if(k==='aq'){S.adm.q=e.target.value;render()}
 });
 document.addEventListener('change',e=>{
+  if(e.target.dataset.c==='restore'){const f=e.target.files[0];e.target.value='';if(f)geriYukle(f);return}
   if(e.target.dataset.c==='fisY'){saveCfg({fisY:e.target.value}).catch(()=>{});return}
   const t=e.target,k=t.dataset.c;if(!k)return;
   if(k==='waiter'){S.waiter=t.value;try{localStorage.setItem('cini-waiter',t.value)}catch{}}
