@@ -28,12 +28,12 @@ function yerlesim() {
 }
 
 // Fişi görünmez pencerede hazırlar, içeriğin yüksekliği kadar rulo kağıda doğrudan yazdırır.
-async function fisYazdir({ html, mm, yazici }) {
+async function fisYazdir({ html, mm, boy, yazici }) {
   const w = new BrowserWindow({ show: false, width: Math.round(mm * 3.78), height: 600, webPreferences: { sandbox: true } });
   try {
     await w.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
     const yukseklik = await w.webContents.executeJavaScript('Math.ceil(document.body.getBoundingClientRect().height)');
-    const pageSize = { width: mm * 1000, height: Math.ceil(yukseklik * 264.6) + 3000 };
+    const pageSize = { width: Math.round(mm * 1000), height: boy > 0 ? Math.round(boy * 1000) : Math.ceil(yukseklik * 264.6) + 3000 };
     if (process.env.CK_PDF) { fs.writeFileSync(process.env.CK_PDF + '-' + mm + '.pdf', await w.webContents.printToPDF({ pageSize: { width: mm / 25.4, height: pageSize.height / 25400 }, margins: { marginType: 'none' }, printBackground: true })); return { ok: true }; }
     const yazicilar = await w.webContents.getPrintersAsync();
     if (!yazicilar.length) return { ok: false, hata: 'Bu Mac\'te tanımlı yazıcı yok. Önce fiş yazıcısını Sistem Ayarları > Yazıcılar\'dan ekleyin.' };

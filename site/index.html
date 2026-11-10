@@ -210,6 +210,9 @@ h1,h2,h3{margin:0;font-family:var(--f-d);font-weight:600;letter-spacing:.01em}
 .pl-h{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:32px;margin-bottom:5px}
 .ok{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-radius:8px;background:var(--c2);font-weight:600}
 .payb{min-height:56px;flex:1 1 220px;font:700 21px var(--f-d)}
+.fisg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:start}
+.fison{position:sticky;top:0}.fisg .seg{flex-wrap:wrap}.kagit{background:var(--panel2);padding:14px;border-radius:8px;max-height:70vh;overflow:auto;display:flex;justify-content:center}
+.kagit iframe{display:block;border:0;background:#fff;box-shadow:0 0 0 1px #9a9a9a,0 2px 8px rgba(0,0,0,.25);zoom:1.5}
 .imgf{display:flex;gap:12px;align-items:center}
 .imgf img{width:110px;height:70px;object-fit:cover;border-radius:7px;flex:none}
 .table-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;max-height:320px;overflow:auto}
@@ -309,7 +312,7 @@ details summary{cursor:pointer;color:var(--mut);font-weight:600;margin-top:8px}
   .md{padding:12px;gap:9px;max-height:100%}.ov{padding:8px;overscroll-behavior:contain}.md h2{font-size:22px}
   .due{padding:7px 10px}.due .big{font-size:25px}.pl{max-height:120px}.pi{min-height:40px;padding:3px 8px}.pl-h{margin-bottom:3px;min-height:0}.ent{font-size:20px;min-height:36px;padding:3px 10px}.pad{gap:4px}.pad button{height:40px;font-size:20px}.mth .btn{min-height:40px;font-size:17px}.quick .btn{min-height:32px}
   .padtg{display:flex;min-height:36px}.pay-g:not(.pd) .ent,.pay-g:not(.pd) .quick,.pay-g:not(.pd) .pad,.pay-g.pd .lst{display:none}.pay-g{gap:8px}
-  .ad-h .seg button{padding:7px 7px;font-size:13px}
+  .ad-h .seg button{padding:7px 7px;font-size:13px}.fisg{grid-template-columns:minmax(0,1fr)}.fison{position:static}.kagit iframe{zoom:1.2}
   .pacts{bottom:-12px;margin:0 -12px -12px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))}.payb{min-height:44px;font-size:17px;flex-basis:140px}
   .top select{min-height:36px}.btn.sm{min-height:36px}.roll-h button{min-width:32px;min-height:32px;font-size:17px}
   .ad-h .inp,.ad-h select.inp{width:100%}.ad-h h1{width:100%}.ad-h .btn{flex:1}
@@ -757,7 +760,7 @@ function vUrun(){
 /* ---- yönetim ---- */
 function vYonetim(){
   const t=S.adm.tab,c=S.cfg;
-  const tabs=[['masa','Masa düzeni'],['isl','İşletme'],['ag','Ağ ve PIN'],['per','Personel'],['veri','Veri']];
+  const tabs=[['masa','Masa düzeni'],['isl','İşletme'],['fis','Fiş'],['ag','Ağ ve PIN'],['per','Personel'],['veri','Veri']];
   let b='';
   if(t==='masa')b=`<div class="ad-h">${zoneTabs()}<div class="sp"></div><button class="btn" data-a="zoneM">Bölümler</button><button class="btn pri" data-a="tableM">Masa Ekle</button></div>
     <div class="note" style="margin-bottom:10px">Masaları sürükleyerek yerleştirin. Bir masaya dokununca adı, kişi sayısı ve şekli değişir.</div>
@@ -771,16 +774,6 @@ function vYonetim(){
     <label class="field">Hesap sahibi<input id="c-ibanad" name="ibanAd" value="${esc(c.ibanAd)}" placeholder="${esc(c.name)}"></label>
     <label class="field">Banka<input id="c-banka" name="banka" value="${esc(c.banka)}"></label>
     <div class="acts full"><button class="btn pri">Kaydet</button></div></form></div>
-    <div class="pnl" style="max-width:640px;margin-top:14px"><h2>Fiş yazıcısı</h2>
-    <div class="fg">
-      <div class="field">Kağıt genişliği<div class="seg">${[80,58].map(n=>`<button data-a="fisW" data-n="${n}" class="${(+c.fisW||80)===n?'on':''}">${n} mm</button>`).join('')}</div></div>
-      <div class="field">Ödeme sonrası yazdır<div class="seg">${[['1','Açık'],['','Kapalı']].map(([v,l])=>`<button data-a="fisOto" data-v="${v}" class="${(c.fisOto?'1':'')===v?'on':''}">${l}</button>`).join('')}</div></div>
-      ${window.kasaApp?`<label class="field full">Yazıcı<select id="fisY" data-c="fisY"><option value="">Mac'in varsayılan yazıcısı</option>${(S.yazicilar||[]).map(y=>`<option value="${esc(y.name)}"${y.name===c.fisY?' selected':''}>${esc(y.displayName||y.name)}</option>`).join('')}${c.fisY&&!(S.yazicilar||[]).some(y=>y.name===c.fisY)?`<option selected value="${esc(c.fisY)}">${esc(c.fisY)} (bağlı değil)</option>`:''}</select></label>`:'<p class="full" style="margin:0;color:var(--mut)">Tarayıcıda yazdırma penceresi açılır: yazıcıyı seçin, kenar boşluğunu Yok yapın. Doğrudan yazdırma Cini Kasa uygulamasında çalışır.</p>'}
-    </div>
-      <label class="field">Yazı alanı (mm)<input id="fisAlan" data-c="fisAlan" type="number" min="30" max="80" step="1" value="${fisOlcu(+c.fisW||80).alan}"></label>
-      <label class="field">Soldan boşluk (mm)<input id="fisSol" data-c="fisSol" type="number" min="0" max="10" step="0.5" value="${fisOlcu(+c.fisW||80).sol}"></label>
-      <p class="full" style="margin:0;color:var(--mut)">Sağdaki rakamlar kesiliyorsa yazı alanını 2 mm azaltın. Fiş sağa kayıksa soldan boşluğu azaltın.</p>
-    <div class="acts" style="margin-top:10px"><button class="btn" data-a="fisTest">Deneme Fişi Yazdır</button></div></div>
     <div class="pnl" style="max-width:640px;margin-top:14px"><h2>Yemeksepeti aktarımı</h2>
     <p style="margin:0 0 10px;color:var(--mut)">Bu kodu Chrome eklentisine girin. Kodu bilen eklenti bu kasaya sipariş aktarabilir.</p>
     ${c.ysKey?`<div class="ent num" style="font-size:18px;text-align:left;user-select:all">${esc(c.ysKey)}</div>`:''}
@@ -792,6 +785,7 @@ function vYonetim(){
     <p style="margin:10px 0;color:var(--mut)">IP değişirse şu adres de çalışır: <b class="mono">http://${esc(S.ag.ad)}:${S.ag.port}</b></p>
     <form data-f="agPin" class="fg" style="grid-template-columns:minmax(0,1fr) auto;align-items:end"><label class="field">Giriş PIN'i<input id="ag-pin" name="pin" inputmode="numeric" value="${esc(S.ag.pin)}" required></label><button class="btn pri">PIN'i Kaydet</button></form>
     <p style="margin:10px 0 0;color:var(--mut)">Yedekler: <span class="mono">${esc(S.ag.yedek)}</span></p></div>`:'<div class="empty"><b>Ağ bilgisi yükleniyor</b></div>';
+  if(t==='fis')b=fisAyarHtml(c);
   if(t==='per')b=`<div class="pnl" style="max-width:480px"><div class="rows">${(c.staff||[]).map((w,i)=>`<div><span>${esc(w)}</span><button class="btn sm dan" data-a="rmStaff" data-n="${i}">Çıkar</button></div>`).join('')}</div>
     <form class="fg" data-f="staff" style="margin-top:10px;grid-template-columns:minmax(0,1fr) auto"><input class="inp" id="newStaff" name="n" placeholder="Yeni personel adı" aria-label="Yeni personel adı" required><button class="btn pri">Ekle</button></form></div>`;
   if(t==='veri')b=`<div class="dgrid">
@@ -867,20 +861,24 @@ function receiptHtml(s,feed){
 }
 /* Fiş yazdırma: 80 ve 58 mm rulo. Uygulamada doğrudan seçili yazıcıya, tarayıcıda yazdırma penceresiyle gider. */
 /* Yazı alanı ve sol boşluk yazıcıya göre Yönetim'den ayarlanır; 58 mm yazıcılar çoğu zaman sağ kenarı basamaz. */
-const fisOlcu=mm=>{const c=S.cfg,v=(x,d)=>Number.isFinite(+x)&&x!==''&&x!=null?+x:d;return{alan:v(c.fisAlan,mm===58?44:72),sol:v(c.fisSol,mm===58?1:4)}};
-function fisBelge(ic,mm){
-  const{alan,sol}=fisOlcu(mm),yazi=mm===58?10.5:12.5;
+const fisOlcu=()=>{
+  const c=S.cfg,v=(x,d)=>x!==''&&x!=null&&Number.isFinite(+x)?+x:d,en=v(c.fisW,80),dar=en<70;
+  return{en,boy:v(c.fisH,0),alan:v(c.fisAlan,dar?en-14:en-8),sol:v(c.fisSol,dar?1:4),ust:v(c.fisUst,2),yazi:v(c.fisYazi,dar?10.5:12.5)};
+};
+/* Kağıt boyu yazıcının sürücüdeki kağıdıyla aynı olmalı; farklıysa tarayıcı fişi küçültüp kaydırır. */
+function fisBelge(ic,o=fisOlcu(),onizleme){
+  const{en,boy,alan,sol,ust,yazi}=o;
   return`<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Fiş</title><style>
-@page{size:${mm}mm auto;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000}
-body{width:${mm}mm;padding:2mm 0 6mm ${sol}mm}.receipt{width:${alan}mm!important;font:600 ${yazi}px/1.35 Menlo,"Courier New",monospace;-webkit-print-color-adjust:exact}
+@page{size:${en}mm ${boy?boy+'mm':'auto'};margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000}
+body{width:${en}mm;padding:${ust}mm 0 6mm ${sol}mm}.receipt{width:${alan}mm!important;font:600 ${yazi}px/1.35 Menlo,"Courier New",monospace;-webkit-print-color-adjust:exact${onizleme?';outline:1px dashed #c8101c':''}}
 h3{margin:0 0 1mm;font-size:${yazi+3}px;text-align:center}.c{text-align:center}.r{display:flex;justify-content:space-between;gap:2mm}.r span:last-child{white-space:nowrap}
 hr{border:0;border-top:1px dashed #000;margin:1.2mm 0}.b{font-weight:800;font-size:${yazi+2.5}px}
 </style></head><body>${ic}</body></html>`;
 }
 async function fisYazdir(ic){
-  const mm=+S.cfg.fisW||80,html=fisBelge(ic,mm);
+  const o=fisOlcu(),html=fisBelge(ic,o);
   if(window.kasaApp){
-    const r=await kasaApp.yazdir({html,mm,yazici:S.cfg.fisY||''});
+    const r=await kasaApp.yazdir({html,mm:o.en,boy:o.boy,yazici:S.cfg.fisY||''});
     if(!r.ok)toast(r.hata||'Fiş yazdırılamadı. Yazıcıyı kontrol edin.',1);else toast('Fiş yazıcıya gönderildi');
     return;
   }
@@ -888,6 +886,35 @@ async function fisYazdir(ic){
   f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';f.srcdoc=html;
   f.onload=()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),60000)};
   document.body.append(f);
+}
+function ornekFis(){
+  const i=[{name:'Adana Kebabı (180 gr)',qty:2,price:300,vat:10},{name:'Ayran',qty:2,price:40,vat:10},{name:'Uzun adlı deneme ürünü ve yanı',qty:1,price:1250.5,vat:10}];
+  return{no:'DENEME',ts:Date.now(),label:'Masa',waiter:curW(),items:i,sub:1930.5,d:0,total:1930.5,vat:{10:175.5},pay:[{m:'cash',a:2000}],change:69.5};
+}
+function fisAyarHtml(c){
+  const o=fisOlcu(),sayi=(k,l,v,min,max,st)=>`<label class="field">${l}<input id="f-${k}" data-c="fisAyar" data-k="${k}" type="text" inputmode="decimal" autocomplete="off" value="${String(v).replace('.',',')}"></label>`;
+  const it=(k,n,l)=>`<button class="btn sm" data-a="fisKaydir" data-k="${k}" data-n="${n}">${l}</button>`;
+  const hazir=[[58,0,'58 mm rulo'],[58,210,'58 × 210 mm'],[80,0,'80 mm rulo'],[80,297,'80 × 297 mm']];
+  return`<div class="fisg"><div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+  <div class="pnl"><h2>Kağıt</h2><div class="fg">
+    <div class="field full">Hazır ölçü<div class="seg">${hazir.map(([e,h,l])=>`<button data-a="fisHazir" data-w="${e}" data-h="${h}" class="${o.en===e&&o.boy===h?'on':''}">${l}</button>`).join('')}</div></div>
+    ${sayi('fisW','Kağıt eni (mm)',o.en,30,120,1)}${sayi('fisH','Kağıt boyu (mm) · 0 = otomatik',o.boy,0,2000,1)}
+  </div><p style="margin:10px 0 0;color:var(--mut)">Kağıt boyunu yazıcının ayarındaki kağıtla aynı yapın; örneğin yazıcı 58×210 ise burada da 58 ve 210.</p></div>
+  <div class="pnl"><h2>Yazının yeri ve boyutu</h2><div class="fg">
+    ${sayi('fisAlan','Yazı alanı eni (mm)',o.alan,15,120,0.5)}${sayi('fisYazi','Yazı boyutu',o.yazi,7,24,0.5)}
+    ${sayi('fisSol','Soldan boşluk (mm)',o.sol,0,30,0.5)}${sayi('fisUst','Üstten boşluk (mm)',o.ust,0,50,0.5)}
+  </div>
+  <div class="quick" style="margin-top:10px">${it('fisSol',-1,'← Sola')}${it('fisSol',1,'Sağa →')}${it('fisUst',-1,'↑ Yukarı')}${it('fisUst',1,'↓ Aşağı')}${it('fisAlan',-1,'Daralt')}${it('fisAlan',1,'Genişlet')}${it('fisYazi',-0.5,'Yazı küçük')}${it('fisYazi',0.5,'Yazı büyük')}</div>
+  <p style="margin:10px 0 0;color:var(--mut)">Sağdaki rakamlar kesiliyorsa <b>Daralt</b>, fiş sağa kayıksa <b>Sola</b>. Düğmeler 1 mm oynatır.</p></div>
+  <div class="pnl"><h2>Yazdırma</h2><div class="fg">
+    <div class="field">Ödeme sonrası yazdır<div class="seg">${[['1','Açık'],['','Kapalı']].map(([v,l])=>`<button data-a="fisOto" data-v="${v}" class="${(c.fisOto?'1':'')===v?'on':''}">${l}</button>`).join('')}</div></div>
+    ${window.kasaApp?`<label class="field full">Yazıcı<select id="fisY" data-c="fisY"><option value="">Varsayılan yazıcı</option>${(S.yazicilar||[]).map(y=>`<option value="${esc(y.name)}"${y.name===c.fisY?' selected':''}>${esc(y.displayName||y.name)}</option>`).join('')}${c.fisY&&!(S.yazicilar||[]).some(y=>y.name===c.fisY)?`<option selected value="${esc(c.fisY)}">${esc(c.fisY)} (bağlı değil)</option>`:''}</select></label>`:'<p class="full" style="margin:0;color:var(--mut)">Tarayıcının yazdırma penceresinde kenar boşluklarını <b>Yok</b>, ölçeği <b>%100</b> yapın. Kağıt boyutu yazıcınızın kağıdı olmalı.</p>'}
+  </div>
+  <div class="acts" style="margin-top:10px"><button class="btn l" data-a="fisSifirla">Varsayılana Dön</button><button class="btn pri" data-a="fisTest">Deneme Fişi Yazdır</button></div></div>
+  </div>
+  <div class="pnl fison"><h2>Önizleme</h2><p style="margin:0 0 8px;color:var(--mut)">${o.en} × ${o.boy||'otomatik'} mm · kırmızı çizgi yazı alanı</p>
+    <div class="kagit"><iframe title="Fiş önizlemesi" style="width:${o.en}mm;height:${o.boy?o.boy+'mm':'120mm'}" srcdoc="${esc(fisBelge(receiptHtml(ornekFis()),o,true))}"${o.boy?'':` onload="this.style.height=this.contentDocument.documentElement.scrollHeight+'px'"`}></iframe></div></div>
+  </div>`;
 }
 function adisyonFis(o){
   const t=totals(o);
@@ -1139,12 +1166,14 @@ const A={
     for(const x of l){const p={...x.p,price:x.nw};S.prods[p.id]=p;await D.set('products',p.id,p)}
     render();toast(`${l.length} ürünün fiyatı güncellendi`);
   },
-  admTab(e){S.adm.tab=e.v;S.arm=null;if(e.v==='ag')fetch('/api/ag').then(r=>r.ok?r.json():null).then(a=>{S.ag=a;render()}).catch(()=>{});if(e.v==='isl'&&window.kasaApp)kasaApp.yazicilar().then(l=>{S.yazicilar=l;render()}).catch(()=>{});render()},
+  admTab(e){S.adm.tab=e.v;S.arm=null;if(e.v==='ag')fetch('/api/ag').then(r=>r.ok?r.json():null).then(a=>{S.ag=a;render()}).catch(()=>{});if(e.v==='fis'&&window.kasaApp)kasaApp.yazicilar().then(l=>{S.yazicilar=l;render()}).catch(()=>{});render()},
   fisAdisyon(){const o=S.orders[S.order];if(o?.items.length)return fisYazdir(receiptHtml(adisyonFis(o)))},
   fisSale(){return fisYazdir(receiptHtml(S.modal.sale))},
-  fisW(e){return saveCfg({fisW:+e.n,fisAlan:'',fisSol:''})},
   fisOto(e){return saveCfg({fisOto:e.v?1:0})},
-  fisTest(){const i=[{name:'Deneme ürünü',qty:2,price:150,vat:10},{name:'Uzun adlı deneme ürünü (180 gr) ve yanı',qty:1,price:1250.5,vat:10}];return fisYazdir(receiptHtml({no:'DENEME',ts:Date.now(),label:'Masa',waiter:curW(),items:i,sub:1550.5,d:0,total:1550.5,vat:{10:140.95},pay:[{m:'cash',a:1600}],change:49.5}))},
+  fisTest(){return fisYazdir(receiptHtml(ornekFis()))},
+  fisHazir(e){return saveCfg({fisW:+e.w,fisH:+e.h,fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},
+  fisKaydir(e){const o=fisOlcu(),k=e.k,ad={fisSol:'sol',fisUst:'ust',fisAlan:'alan',fisYazi:'yazi'}[k];return saveCfg({[k]:Math.max(0,Math.round((o[ad]+ +e.n)*10)/10)})},
+  fisSifirla(){return saveCfg({fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},
   ysOpen(){if(!window.open('https://partner-app.yemeksepeti.com/live-orders','ys-panel'))toast('Tarayıcı pencereyi engelledi. Yemeksepeti Panel kısayolunu kullanın.',1)},
   async ysKey(){await saveCfg({ysKey:[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(16).padStart(2,'0')).join('')})},
   async ysOff(){S.ysBeat=null;await saveCfg({ysKey:''})},
@@ -1214,7 +1243,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.dataset.c==='restore'){const f=e.target.files[0];e.target.value='';if(f)geriYukle(f);return}
-  if(e.target.dataset.c==='fisAlan'||e.target.dataset.c==='fisSol'){const v=parseFloat(String(e.target.value).replace(',','.'));if(Number.isFinite(v))saveCfg({[e.target.dataset.c]:v}).then(()=>toast('Fiş ölçüsü kaydedildi')).catch(()=>{});return}
+  if(e.target.dataset.c==='fisAyar'){const k=e.target.dataset.k,v=parseFloat(String(e.target.value).replace(',','.'));if(Number.isFinite(v)&&v>=0)saveCfg({[k]:v}).catch(()=>{});return}
   if(e.target.dataset.c==='fisY'){saveCfg({fisY:e.target.value}).catch(()=>{});return}
   const t=e.target,k=t.dataset.c;if(!k)return;
   if(k==='waiter'){S.waiter=t.value;try{localStorage.setItem('cini-waiter',t.value)}catch{}}
