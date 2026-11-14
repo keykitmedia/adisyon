@@ -1,17 +1,32 @@
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><style>
 html,body{margin:0;height:100%;overflow:hidden;background:#171310;color:#f6f0e7;font:600 13px system-ui,sans-serif;user-select:none}
 .b{height:100%;display:flex;align-items:center;gap:4px;padding:0 6px;box-sizing:border-box;border-bottom:3px solid #c8101c}
-.t{margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-button{border:0;border-radius:5px;padding:5px 8px;background:#2a2420;color:inherit;font:inherit;cursor:pointer;white-space:nowrap}
-button:hover{background:#3d332a}button.on{background:#c8101c;color:#fff}
-body.k .t,body.k .x{display:none}body.k .b{padding:0;border:0}body.k #ac{flex:1;height:100%;background:#c8101c;color:#fff}
-#ac{display:none}body.k #ac{display:block}
-</style></head><body><div class="b"><span class="t">Yemeksepeti</span>
-<button class="x" data-m="kucuk">Küçük</button><button class="x" data-m="orta">Orta</button><button class="x" data-m="buyuk">Büyük</button><button class="x" data-m="tam">Tam</button>
-<button class="x" id="y" title="Paneli yenile">↻</button><button class="x" data-m="kapali" title="Paneli gizle">✕</button>
-<button id="ac" data-m="orta">Yemeksepeti</button></div>
-<script>
+button{border:0;border-radius:5px;padding:6px 9px;background:#2a2420;color:inherit;font:inherit;cursor:pointer;white-space:nowrap;position:relative}
+button:hover{background:#3d332a}
+.sek.on{background:#c8101c;color:#fff}
+.sek.yeni::after{content:'';position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:#ffcf0d;box-shadow:0 0 0 2px #171310;animation:yan 1s ease-in-out infinite}
+.sek.yeni:not(.on){background:#ffcf0d;color:#2a2000}
+@keyframes yan{50%{opacity:.25}}
+.sp{flex:1}
+body.k .x{display:none}body.k .b{border:0;padding:0 2px}body.k .sek{flex:1;height:34px}
+@media (max-width:440px){.boy{display:none}}
+@media (prefers-reduced-motion:reduce){.sek.yeni::after{animation:none}}
+</style></head><body><div class="b">
+<button class="sek" data-k="ys">Yemeksepeti</button><button class="sek" data-k="ty">Trendyol</button>
+<span class="sp x"></span>
+<button class="x boy" data-m="kucuk" title="Küçük">K</button><button class="x boy" data-m="orta" title="Orta">O</button><button class="x boy" data-m="buyuk" title="Büyük">B</button><button class="x" data-m="tam" title="Tam ekran">Tam</button>
+<button class="x" id="y" title="Paneli yenile" aria-label="Paneli yenile">↻</button><button class="x" data-m="kapali" title="Paneli gizle" aria-label="Paneli gizle">✕</button>
+</div><script>
 document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => ck.mod(b.dataset.m));
+document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => ck.sec(b.dataset.k));
 document.getElementById('y').onclick = () => ck.yenile();
-ck.dinle(m => { document.body.classList.toggle('k', m === 'kapali'); document.querySelectorAll('.x[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === m)); });
+ck.dinle(d => {
+  document.body.classList.toggle('k', d.mod === 'kapali');
+  document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === d.mod));
+  document.querySelectorAll('[data-k]').forEach(b => {
+    b.classList.toggle('on', d.mod !== 'kapali' && b.dataset.k === d.aktif);
+    b.classList.toggle('yeni', !!d.yeni[b.dataset.k]);
+    b.textContent = d.adlar[b.dataset.k] + (d.yeni[b.dataset.k] ? ' · Yeni' : '');
+  });
+});
 </script></body></html>

@@ -23,7 +23,7 @@ npm start
 
 ## Masaüstü uygulamasını paketleme
 
-Kasa ve Yemeksepeti paneli aynı pencerede açılır, localhost sunucusunu uygulama kendisi başlatır.
+Uygulama solda Vercel'deki kasayı (`https://adisyon-omega.vercel.app`), sağda Yemeksepeti ve Trendyol panellerini açar. Panellerde bildirim, sipariş sesi veya başlıkta sayı belirince sekmede uyarı yanar. Kasa adresi `KASA_URL` ortam değişkeniyle değiştirilebilir. Yerel sunucu (`node sunucu.js`, `Cini-Kasa-Baslat.bat`) ayrı olarak çalışmaya devam eder.
 
 ```bash
 npm install

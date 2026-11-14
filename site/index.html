@@ -46,7 +46,7 @@ h1,h2,h3{margin:0;font-family:var(--f-d);font-weight:600;letter-spacing:.01em}
 .chip.warn{background:var(--sfr);color:var(--sfr-ink)}
 .chip i{width:8px;height:8px;border-radius:50%;background:var(--sfr)}
 .clock{font:500 15px var(--f-m);white-space:nowrap}
-.ysb{background:var(--accent);border-color:var(--accent);color:var(--on)}
+.ysb{background:var(--accent);border-color:var(--accent);color:var(--on)}.tyb{background:#f27a1a;border-color:#f27a1a;color:#1d1714}
 .top select{background:var(--bar2);color:var(--bar-fg);border:1px solid #4a4036;border-radius:6px;padding:5px 8px;max-width:150px}
 .rail{background:var(--bar);display:flex;flex-direction:column;gap:4px;padding:8px}
 .rail button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 2px;border-radius:8px;font:600 15px var(--f-d);color:var(--bar-mut)}
@@ -503,7 +503,7 @@ function renderChrome(){
   const n=new Date();
   $('#top').innerHTML=`${S.cfg.logo?`<img class="logo" src="${esc(S.cfg.logo)}" alt="${esc(S.cfg.name)}">`:`<div class="brand">${MARK}Çini Kasa</div>`}<div class="biz">${esc(S.cfg.name)}</div><div class="sp"></div>
     ${S.cfg.demo?'<span class="chip warn">Örnek veri</span>':''}
-    <button class="btn sm ysb" data-a="ysOpen">Yemeksepeti</button>${ysChip()}${S.local?'<span class="chip mob" title="Veriler yalnızca bu tarayıcıda duruyor">Bu cihazda</span>':'<span class="chip mob"><i></i>Canlı</span>'}
+    <button class="btn sm ysb" data-a="ysOpen">Yemeksepeti</button><button class="btn sm ysb tyb" data-a="tyOpen">Trendyol</button>${ysChip()}${S.local?'<span class="chip mob" title="Veriler yalnızca bu tarayıcıda duruyor">Bu cihazda</span>':'<span class="chip mob"><i></i>Canlı</span>'}
     <select id="waiter" data-c="waiter" aria-label="Kasiyer">${(S.cfg.staff||[]).map(w=>`<option${w===curW()?' selected':''}>${esc(w)}</option>`).join('')}</select>
     <span class="clock num" id="clk">${pad(n.getDate())} ${AYK[n.getMonth()]} ${pad(n.getHours())}:${pad(n.getMinutes())}</span>`;
   const nav=[['masalar','Masalar'],['raporlar','Raporlar'],['urunler','Ürünler'],['yonetim','Yönetim']];
@@ -1226,6 +1226,7 @@ const A={
   fisHazir(e){return saveCfg({fisW:+e.w,fisH:+e.h,fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},
   fisKaydir(e){const o=fisOlcu(),k=e.k,ad={fisSol:'sol',fisUst:'ust',fisAlan:'alan',fisYazi:'yazi'}[k],[a,b]=FIS_SINIR[k];return saveCfg({[k]:Math.min(b,Math.max(a,Math.round((o[ad]+ +e.n)*10)/10))})},
   fisSifirla(){return saveCfg({fisW:'',fisH:'',fisAlan:'',fisSol:'',fisUst:'',fisYazi:''})},
+  tyOpen(){if(!window.open('https://partner.tgoyemek.com/auth/login?redirect=%2F','ty-panel'))toast('Tarayıcı pencereyi engelledi.',1)},
   ysOpen(){if(!window.open('https://partner-app.yemeksepeti.com/live-orders','ys-panel'))toast('Tarayıcı pencereyi engelledi. Yemeksepeti Panel kısayolunu kullanın.',1)},
   async ysKey(){await saveCfg({ysKey:[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(16).padStart(2,'0')).join('')})},
   async ysOff(){S.ysBeat=null;await saveCfg({ysKey:''})},
