@@ -1,7 +1,6 @@
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html,body{margin:0}</style><script src="yerel-db.js"></script></head><body><title>Çini Kasa</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=Doto:wght@700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
 /* Yerleşim: solda sabit cihaz rayı, ortada çalışma alanı, sağda termal rulo. Renkler Kebapçı Mustafa Usta logosundan: közlenmiş siyah çerçeve, biber kırmızısı, köz turuncusu, safran sarısı, satır çeliği. Masa durumu da bu sıcaklık sırasını izler. */
 :root{
@@ -213,6 +212,9 @@ h1,h2,h3{margin:0;font-family:var(--f-d);font-weight:600;letter-spacing:.01em}
 .fisg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:14px;align-items:start}
 .fison{position:sticky;top:0}.fisg .seg{flex-wrap:wrap}.kagit{background:var(--panel2);padding:14px;border-radius:8px;max-height:70vh;max-width:min(520px,100%);overflow:auto;display:flex;justify-content:center}
 .kagit iframe{display:block;border:0;background:#fff;box-shadow:0 0 0 1px #9a9a9a,0 2px 8px rgba(0,0,0,.25);zoom:1.5}
+.secim{display:flex;width:100%}.secim button{flex:1;padding:12px 8px;font-size:16px}
+.malz{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}.malz .btn{min-height:52px;font:600 18px var(--f-d)}
+.malz .btn.cik{background:var(--accent);border-color:var(--accent);color:var(--on);text-decoration:line-through;text-decoration-thickness:1px}
 .imgf{display:flex;gap:12px;align-items:center}
 .imgf img{width:110px;height:70px;object-fit:cover;border-radius:7px;flex:none}
 .table-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;max-height:320px;overflow:auto}
@@ -433,12 +435,23 @@ function rollSales(list){
     for(const i of s.items||[]){
       const r=i.gift?0:i.price*i.qty*k;
       if(i.gift)o.gift+=i.price*i.qty;
-      const e=o.it[i.pid]=o.it[i.pid]||[0,0];e[0]+=i.qty;e[1]=r2(e[1]+r);
-      o.nm[i.pid]=[i.name,i.catName||''];
+      const key=i.por===1.5?i.pid+'~15':i.pid,e=o.it[key]=o.it[key]||[0,0];e[0]+=i.qty;e[1]=r2(e[1]+r);
+      o.nm[key]=[i.name,i.catName||''];
     }
   }
   ['c','d','cash','card','iban','meal','ys','cost','gift','vd'].forEach(f=>o[f]=r2(o[f]));
   return o;
+}
+/* Porsiyon ve çıkarılan malzeme seçimi. Kategoride liste yoksa adı "dürüm" geçen kategoriye varsayılan liste gelir. */
+const siz=w=>{const v=(String(w).toLocaleLowerCase('tr').match(/[aıoueiöü]/g)||['a']).pop();return w+{a:'sız',ı:'sız',e:'siz',i:'siz',o:'suz',u:'suz',ö:'süz',ü:'süz'}[v]};
+const cikarListe=p=>{const c=S.cats[p?.cat],l=c?.cikar??(/dürüm/i.test(c?.name||'')?'Soğan, Domates, Maydanoz':'');return String(l).split(',').map(x=>x.trim()).filter(Boolean)};
+const secenekli=p=>p.price15>0||cikarListe(p).length>0;
+const cikarYazi=i=>(i.cikar||[]).map(x=>siz(x.toLocaleLowerCase('tr')).replace(/^./,c=>c.toLocaleUpperCase('tr'))).join(', ');
+function satirEkle(p,por,cikar,q){
+  const o=ensureOrder(),fiyat=por===1.5?p.price15:p.price,anahtar=cikar.join(',');
+  const l=o.items.find(i=>i.pid===p.id&&!i.sent&&!i.gift&&!i.note&&(i.por||1)===por&&(i.cikar||[]).join(',')===anahtar);
+  if(l)l.qty+=q;else o.items.push({pid:p.id,name:p.name+(por===1.5?' (1,5 porsiyon)':''),price:fiyat,cost:(p.cost||0)*por,vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por===1.5?{por}:{}),...(cikar.length?{cikar}:{})});
+  S.last=`${q}x ${p.name}${por===1.5?' 1,5':''} ${fmt2.format(fiyat*q)}`;S.mult=1;S.scrollLn=true;touch(o.id);
 }
 const salesOf=k=>Object.values(S.sales).filter(s=>s.day===k);
 const isClosed=k=>{const[y,m,d]=k.split('-');return!!S.stats[y+'-'+m]?.days?.[d]?.closed};
@@ -597,7 +610,7 @@ function vAdisyon(){
     <div class="roll">
       <div class="roll-h"><span>${esc(lbl)}${o?` · ${durLabel(mins(o))}`:''}</span><span>Kişi <button data-a="guests" data-n="-1" aria-label="Kişi azalt">−</button>${o?.guests||S.draftG||2}<button data-a="guests" data-n="1" aria-label="Kişi artır">+</button></span></div>
       <div class="lines" data-k="lines">${items.length?items.map((i,x)=>`
-        <button class="ln${S.sel===x?' sel':''}" data-a="sel" data-n="${x}"><span>${i.qty}×</span><span>${esc(i.name)}${i.note?`<small>${esc(i.note)}</small>`:''}${i.gift?'<small>İKRAM</small>':''}${i.ys?'<small>Menüde eşleşmedi</small>':''}${i.sent?'<small class="st">✓ mutfakta</small>':''}</span><span class="num">${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></button>
+        <button class="ln${S.sel===x?' sel':''}" data-a="sel" data-n="${x}"><span>${i.qty}×</span><span>${esc(i.name)}${i.cikar?.length?`<small>${esc(cikarYazi(i))}</small>`:''}${i.note?`<small>${esc(i.note)}</small>`:''}${i.gift?'<small>İKRAM</small>':''}${i.ys?'<small>Menüde eşleşmedi</small>':''}${i.sent?'<small class="st">✓ mutfakta</small>':''}</span><span class="num">${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></button>
         ${S.sel===x?`<div class="ln-a"><button data-a="qty" data-n="-1" aria-label="Azalt">−1</button><button data-a="qty" data-n="1" aria-label="Artır">+1</button><button data-a="noteM">Not</button><button data-a="gift">${i.gift?'İkramı kaldır':'İkram'}</button><button class="d" data-a="rm">Sil</button></div>`:''}`).join(''):'<div class="empty" style="color:var(--ink2)">Adisyon boş.<br>Soldan ürün seçin.</div>'}</div>
       <div class="sums"><div><span>Ara toplam</span><span>${fmt2.format(t.sub)}</span></div>${t.d?`<div><span>İskonto</span><span>−${fmt2.format(t.d)}</span></div>`:''}<div><span>KDV dahil ${Object.entries(t.vat).map(([k,v])=>`%${k}: ${fmt2.format(v)}`).join(' · ')}</span></div>${o?.paid?`<div><span>Alınan</span><span>${fmt2.format(o.paid)}</span></div>`:''}<div class="t"><span>${o?.paid?'KALAN':'TOPLAM'}</span><span>${tl(t.total)}</span></div></div>
     </div>
@@ -775,10 +788,7 @@ function vYonetim(){
     <label class="field">Hesap sahibi<input id="c-ibanad" name="ibanAd" value="${esc(c.ibanAd)}" placeholder="${esc(c.name)}"></label>
     <label class="field">Banka<input id="c-banka" name="banka" value="${esc(c.banka)}"></label>
     <div class="acts full"><button class="btn pri">Kaydet</button></div></form></div>
-    <div class="pnl" style="max-width:640px;margin-top:14px"><h2>Yemeksepeti aktarımı</h2>
-    <p style="margin:0 0 10px;color:var(--mut)">Bu kodu Chrome eklentisine girin. Kodu bilen eklenti bu kasaya sipariş aktarabilir.</p>
-    ${c.ysKey?`<div class="ent num" style="font-size:18px;text-align:left;user-select:all">${esc(c.ysKey)}</div>`:''}
-    <div class="acts" style="margin-top:10px"><button class="btn" data-a="ysKey">${c.ysKey?'Yeni kod üret':'Kod üret'}</button>${c.ysKey?'<button class="btn dan" data-a="ysOff">Kapat</button>':''}</div></div>`;
+`;
   if(t==='ag'&&S.ag?.bulut)b=`<div class="pnl" style="max-width:640px"><h2>Bulut sürümü</h2><p style="margin:0;color:var(--mut)">Bu kasa internette çalışıyor. Telefon, tablet veya bilgisayardan bu sitenin adresiyle girilir. Giriş şifresi Vercel'de <span class="mono">KASA_SIFRE</span> ayarından değiştirilir.</p></div>`;
   else if(t==='ag')b=S.ag?`<div class="pnl" style="max-width:640px"><h2>Ağdan giriş</h2>
     <p style="margin:0 0 10px;color:var(--mut)">Aynı Wi-Fi'deki telefon, tablet veya bilgisayarın tarayıcısına şu adresi yazın:</p>
@@ -811,7 +821,7 @@ function closeM(){S.modal=null;paintM()}
 function paintM(){
   const m=S.modal,el=$('#modal');
   if(!m){el.innerHTML='';return}
-  const html=({pay:mPay,receipt:mReceipt,note:mNote,disc:mDisc,move:mMove,prod:mProd,cats:mCats,zam:mZam,table:mTable,zone:mZone,z:mZ}[m.t])(m);
+  const html=({urun:mUrun,pay:mPay,receipt:mReceipt,note:mNote,disc:mDisc,move:mMove,prod:mProd,cats:mCats,zam:mZam,table:mTable,zone:mZone,z:mZ}[m.t])(m);
   const a=document.activeElement,fid=a&&el.contains(a)?a.id:null;
   el.innerHTML=`<div class="ov" data-ov="1"><div class="md${m.wide?' w':''}" role="dialog" aria-modal="true">${html}</div></div>`;
   if(fid&&document.getElementById(fid))document.getElementById(fid).focus();
@@ -853,7 +863,7 @@ function receiptHtml(s,feed){
   return`<div class="receipt${feed?' feed':''}"><h3>${esc(upTR(c.name))}</h3>${c.address?`<div class="c">${esc(c.address)}</div>`:''}${c.taxNo?`<div class="c">VKN ${esc(c.taxNo)}</div>`:''}<hr>
   <div class="r"><span>${/^\d/.test(s.no)?'Fiş ':''}${esc(s.no)}</span><span>${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${d.toTimeString().slice(0,5)}</span></div>
   <div class="r"><span>${esc(s.label)}</span><span>${esc(s.waiter)}</span></div><hr>
-  ${s.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.gift?' (ikram)':''}</span><span>${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></div>${i.note?`<div style="padding-left:1.5em">${esc(i.note)}</div>`:''}`).join('')}<hr>
+  ${s.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.gift?' (ikram)':''}</span><span>${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></div>${i.cikar?.length?`<div style="padding-left:1.5em">${esc(cikarYazi(i))}</div>`:''}${i.note?`<div style="padding-left:1.5em">${esc(i.note)}</div>`:''}`).join('')}<hr>
   ${s.d?`<div class="r"><span>Ara toplam</span><span>${fmt2.format(s.sub)}</span></div><div class="r"><span>İskonto</span><span>-${fmt2.format(s.d)}</span></div>`:''}
   ${Object.entries(s.vat||{}).map(([k,v])=>`<div class="r"><span>KDV %${k}</span><span>${fmt2.format(v)}</span></div>`).join('')}
   <div class="r b"><span>TOPLAM</span><span>${tl(s.total)}</span></div><hr>
@@ -949,6 +959,16 @@ function mMove(){
   <div class="note">Boş masaya dokununca adisyon taşınır. Dolu masaya dokununca iki adisyon birleşir.</div>
   <div class="table-pick">${ts.map(t=>{const b=tStatus(S.orders[t.id])==='bos';return`<button class="${b?'':'dolu'}" data-a="moveTo" data-id="${t.id}">${esc(t.name)}<small>${b?'Taşı':'Birleştir'}</small></button>`}).join('')}</div>`;
 }
+function mUrun(m){
+  const p=S.prods[m.pid];if(!p)return'';
+  const l=cikarListe(p),fiyat=m.por===1.5?p.price15:p.price;
+  return`<div class="md-h"><h2>${esc(p.name)}</h2>${close}</div>
+  ${p.price15>0?`<div><div class="lab" style="margin-bottom:5px">Porsiyon</div><div class="seg secim">${[[1,'1 porsiyon',p.price],[1.5,'1,5 porsiyon',p.price15]].map(([n,a,f])=>`<button data-a="urunPor" data-n="${n}" class="${m.por===n?'on':''}">${a} · ${tl(f)}</button>`).join('')}</div></div>`:''}
+  ${l.length?`<div><div class="lab" style="margin-bottom:5px">İçindekiler</div><div class="malz">${l.map(x=>{const c=m.cikar.includes(x);return`<button class="btn${c?' cik':''}" data-a="urunCikar" data-v="${esc(x)}" aria-pressed="${c}">${c?esc(cikarYazi({cikar:[x]})):esc(x)}</button>`}).join('')}</div>
+    <p style="margin:6px 0 0;color:var(--mut);font-size:14px">${m.cikar.length?'Fişte yazar: <b>'+esc(cikarYazi({cikar:l.filter(x=>m.cikar.includes(x))}))+'</b>':'Hiçbirine basmazsanız karışık olur. Çıkarılacak malzemeye dokunun.'}</p></div>`:''}
+  <div class="acts"><div class="mult l"><button data-a="urunAdet" data-n="-1" aria-label="Azalt">−</button><button class="on" disabled>${m.q}</button><button data-a="urunAdet" data-n="1" aria-label="Artır">+</button></div>
+  <button class="btn pri" style="min-height:52px;flex:1;font:700 20px var(--f-d)" data-a="urunEkle">Ekle · ${tl(fiyat*m.q)}</button></div>`;
+}
 function mProd(m){
   const p=m.p||{},cats=Object.values(S.cats).sort((a,b)=>(a.order||0)-(b.order||0));
   return`<div class="md-h"><h2>${p.id?'Ürünü düzenle':'Yeni ürün'}</h2>${close}</div>
@@ -958,7 +978,8 @@ function mProd(m){
   <label class="field">Kategori<select id="p-c" name="cat" required>${cats.map(c=>`<option value="${c.id}"${p.cat===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
   <label class="field">Kod / barkod<input id="p-k" name="code" value="${esc(p.code)}"></label>
   <label class="field">Satış fiyatı (₺, KDV dahil)<input id="p-p" name="price" inputmode="decimal" value="${numIn(p.price)}" required></label>
-  <label class="field">Maliyet (₺)<input id="p-o" name="cost" inputmode="decimal" value="${numIn(p.cost)}"></label>
+  <label class="field">1,5 porsiyon fiyatı (₺, boşsa yok)<input id="p-p15" name="price15" inputmode="decimal" value="${p.price15>0?numIn(p.price15):''}" placeholder="Yok"></label>
+  <label class="field">Maliyet (₺, 1 porsiyon)<input id="p-o" name="cost" inputmode="decimal" value="${numIn(p.cost)}"></label>
   <label class="field">KDV oranı<select id="p-v" name="vat">${[1,10,20].map(v=>`<option value="${v}"${(p.vat??10)==v?' selected':''}>%${v}</option>`).join('')}</select></label>
   <label class="field">Durum<select id="p-a" name="active"><option value="1">Satışta</option><option value="0"${p.active===false?' selected':''}>Satışta değil</option></select></label>
   <div class="acts full">${p.id?`<button type="button" class="btn dan l${S.arm==='prod'?' arm':''}" data-a="delP">${S.arm==='prod'?'Evet, sil':'Ürünü Sil'}</button>`:''}<button class="btn pri">Kaydet</button></div></form>`;
@@ -966,7 +987,8 @@ function mProd(m){
 function mCats(){
   const cats=Object.values(S.cats).sort((a,b)=>(a.order||0)-(b.order||0));
   return`<div class="md-h"><h2>Kategoriler</h2>${close}</div>
-  <div class="rows">${cats.map(c=>{const n=Object.values(S.prods).filter(p=>p.cat===c.id).length;return`<div><input class="inp" id="ct-${c.id}" data-c="catName" data-id="${c.id}" value="${esc(c.name)}" aria-label="Kategori adı"><span class="m" style="white-space:nowrap;align-self:center">${n} ürün</span><button class="btn sm dan" data-a="delCat" data-id="${c.id}" ${n?'disabled':''}>Sil</button></div>`}).join('')}</div>
+  <div class="rows">${cats.map(c=>{const n=Object.values(S.prods).filter(p=>p.cat===c.id).length;const ck=c.cikar??(/dürüm/i.test(c.name)?'Soğan, Domates, Maydanoz':'');return`<div style="flex-wrap:wrap"><input class="inp" id="ct-${c.id}" data-c="catName" data-id="${c.id}" value="${esc(c.name)}" aria-label="Kategori adı"><input class="inp" id="cc-${c.id}" data-c="catCikar" data-id="${c.id}" value="${esc(ck)}" placeholder="Çıkarılabilir malzeme yok" aria-label="${esc(c.name)} için çıkarılabilir malzemeler" style="flex:1 1 100%"><span class="m" style="white-space:nowrap;align-self:center">${n} ürün</span><button class="btn sm dan" data-a="delCat" data-id="${c.id}" ${n?'disabled':''}>Sil</button></div>`}).join('')}</div>
+  <p style="margin:0;color:var(--mut);font-size:14px">İkinci kutu, siparişte çıkarılabilecek malzemelerdir (virgülle ayırın, ör. Soğan, Domates, Maydanoz). Boş bırakılırsa seçim penceresi çıkmaz.</p>
   <form data-f="cat" class="fg" style="grid-template-columns:minmax(0,1fr) auto"><input class="inp" id="newCat" name="n" placeholder="Yeni kategori" aria-label="Yeni kategori" required><button class="btn pri">Ekle</button></form>`;
 }
 function zamList(m){
@@ -1054,11 +1076,14 @@ const A={
   cat(e){S.cat=e.id;S.q='';render()},
   mult(e){S.mult=+e.n;render()},
   add(e){
-    const p=S.prods[e.id];if(!p)return;const o=ensureOrder(),q=S.mult;
-    const l=o.items.find(i=>i.pid===p.id&&!i.sent&&!i.gift&&!i.note);
-    if(l)l.qty+=q;else o.items.push({pid:p.id,name:p.name,price:p.price,cost:p.cost||0,vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q});
-    S.last=`${q}x ${p.name} ${fmt2.format(p.price*q)}`;S.mult=1;S.scrollLn=true;touch(o.id);
+    const p=S.prods[e.id];if(!p)return;
+    if(secenekli(p)){openM({t:'urun',pid:p.id,por:1,cikar:[],q:S.mult});return}
+    satirEkle(p,1,[],S.mult);
   },
+  urunPor(e){S.modal.por=+e.n;paintM()},
+  urunCikar(e){const m=S.modal,x=e.v;m.cikar=m.cikar.includes(x)?m.cikar.filter(y=>y!==x):[...m.cikar,x];paintM()},
+  urunAdet(e){S.modal.q=Math.max(1,S.modal.q+ +e.n);paintM()},
+  urunEkle(){const m=S.modal,p=S.prods[m.pid];if(!p)return closeM();const sira=cikarListe(p);satirEkle(p,m.por,sira.filter(x=>m.cikar.includes(x)),m.q);closeM()},
   sel(e){S.sel=S.sel===+e.n?null:+e.n;render()},
   qty(e){const o=S.orders[S.order],i=o.items[S.sel];i.qty+=+e.n;if(i.qty<=0){o.items.splice(S.sel,1);S.sel=null}touch(o.id)},
   rm(){const o=S.orders[S.order];o.items.splice(S.sel,1);S.sel=null;touch(o.id)},
@@ -1230,6 +1255,7 @@ const F={
   disc(d){const o=S.orders[S.order],v=parseNum(d.v);if(v<=0){toast('İskonto değeri girin.',1);return}if(d.t==='p'&&v>100){toast('Yüzde 100 üzeri olamaz.',1);return}o.disc={t:d.t,v};touch(o.id);closeM()},
   async prod(d){
     const old=S.modal.p,p={...(old||{}),...(S.modal.asset?{asset:S.modal.asset}:{}),id:old?.id||uid('p'),name:d.name.trim(),cat:d.cat,code:d.code.trim(),price:parseNum(d.price),cost:parseNum(d.cost),vat:+d.vat,active:d.active==='1'};
+    const p15=String(d.price15||'').trim()?parseNum(d.price15):0;if(p15>0)p.price15=p15;else delete p.price15;
     if(!(p.price>0)){toast('Geçerli bir fiyat girin.',1);return}
     if(!p.cat){toast('Önce bir kategori ekleyin.',1);return}
     S.prods[p.id]=p;S.arm=null;closeM();render();await D.set('products',p.id,p);toast('Ürün kaydedildi');
@@ -1270,6 +1296,7 @@ document.addEventListener('change',e=>{
   if(k==='waiter'){S.waiter=t.value;try{localStorage.setItem('cini-waiter',t.value)}catch{}}
   if(k==='acat'){S.adm.cat=t.value;render()}
   if(k==='price'){const v=parseNum(t.value),p=S.prods[t.dataset.id];if(v>0&&p&&v!==p.price){const n={...p,price:v};S.prods[p.id]=n;D.set('products',p.id,n).then(()=>toast(`${p.name}: ${tl(v)}`)).catch(()=>{})}else if(p)t.value=numIn(p.price)}
+  if(k==='catCikar'){const c={...S.cats[t.dataset.id],cikar:t.value.split(',').map(x=>x.trim()).filter(Boolean).join(', ')};S.cats[c.id]=c;D.set('categories',c.id,c).then(()=>toast(`${c.name}: malzemeler kaydedildi`)).catch(()=>{})}
   if(k==='catName'){const c={...S.cats[t.dataset.id],name:t.value.trim()};if(c.name){S.cats[c.id]=c;D.set('categories',c.id,c).catch(()=>{})}}
   if(k==='zamF'){S.modal[t.dataset.f2]=t.value;paintM()}
   if(k==='prodImg'&&t.files[0])uploadImg(t.files[0]);

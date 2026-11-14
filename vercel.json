@@ -2,14 +2,36 @@
   "outputDirectory": "site",
   "installCommand": "npm install --omit=dev",
   "rewrites": [
-    { "source": "/giris", "destination": "/api/giris" },
-    { "source": "/_blob/:id", "destination": "/api/gorsel/:id" }
+    {
+      "source": "/giris",
+      "destination": "/api/giris"
+    },
+    {
+      "source": "/_blob/:id",
+      "destination": "/api/gorsel/:id"
+    }
   ],
   "headers": [
-    { "source": "/(.*)", "headers": [
-      { "key": "X-Frame-Options", "value": "DENY" },
-      { "key": "X-Content-Type-Options", "value": "nosniff" },
-      { "key": "Referrer-Policy", "value": "same-origin" }
-    ] }
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
   ]
 }

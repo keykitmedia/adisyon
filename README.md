@@ -67,3 +67,7 @@ Tablolar ilk istekte kendiliğinden kurulur; veritabanı boşsa menü ve masalar
 | `Cini-Kasa-Baslat.bat` | Windows başlatıcısı |
 
 Bu program bilgi fişi üretir; mali yazarkasanın (ÖKC) yerine geçmez.
+
+## Lisans ve gizlilik
+
+Yazılım yalnızca Kebapçı Mustafa Usta işletmesine özeldir, bkz. [LICENSE](LICENSE). Kişisel veriler, KVKK ve vergi notları için [KVKK.md](KVKK.md), açık kaynak bileşenler için [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,6 +1,6 @@
 // Çini Kasa sunucusu. Bu bilgisayardan doğrudan, aynı ağdaki cihazlardan PIN ile açılır. Veriler veri.json dosyasında durur.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), os = require('os');
-const TUR = { '.html': 'text/html;charset=utf-8', '.js': 'text/javascript;charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
+const TUR = { '.html': 'text/html;charset=utf-8', '.js': 'text/javascript;charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.css': 'text/css;charset=utf-8', '.woff2': 'font/woff2', '.txt': 'text/plain;charset=utf-8' };
 const AD = /^[\w.:-]{1,200}$/, RESIM = /^image\/(png|jpeg|webp|gif)$/;
 
 const GIRIS = hata => `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kasa Girişi</title><style>
