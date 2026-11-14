@@ -436,7 +436,7 @@ function rollSales(list){
     for(const i of s.items||[]){
       const r=i.gift?0:i.price*i.qty*k;
       if(i.gift)o.gift+=i.price*i.qty;
-      const key=i.por===1.5?i.pid+'~15':i.pid,e=o.it[key]=o.it[key]||[0,0];e[0]+=i.qty;e[1]=r2(e[1]+r);
+      const key=i.por===1.5?i.pid+'~15':i.por==='az'?i.pid+'~az':i.pid,e=o.it[key]=o.it[key]||[0,0];e[0]+=i.qty;e[1]=r2(e[1]+r);
       o.nm[key]=[i.name,i.catName||''];
     }
   }
@@ -453,13 +453,15 @@ const ad15=p=>{
   const g=p.name.replace(/(\d+(?:[.,]\d+)?)\s*(gr|g|gram|kg)\b/i,(_,n,b)=>kat(n)+' '+b);
   return g!==p.name?g:p.name+' (1,5 porsiyon)';
 };
-const secenekli=p=>p.price15>0||cikarListe(p).length>0;
+const secenekli=p=>p.price15>0||p.priceAz>0||cikarListe(p).length>0;
+/* Porsiyon seçenekleri: az (fiyatı girildiyse), tam ve 1,5 (fiyatı girildiyse). */
+const porsiyonlar=p=>[...(p.priceAz>0?[['az','Az porsiyon',p.priceAz,p.name+' (az)']]:[]),[1,p.priceAz>0?'Tam porsiyon':'1 porsiyon',p.price,p.name],...(p.price15>0?[[1.5,'1,5 porsiyon',p.price15,ad15(p)]]:[])];
 const cikarYazi=i=>(i.cikar||[]).map(x=>siz(x.toLocaleLowerCase('tr')).replace(/^./,c=>c.toLocaleUpperCase('tr'))).join(', ');
 function satirEkle(p,por,cikar,q){
-  const o=ensureOrder(),fiyat=por===1.5?p.price15:p.price,anahtar=cikar.join(',');
+  const o=ensureOrder(),secim=porsiyonlar(p).find(x=>x[0]===por)||porsiyonlar(p).find(x=>x[0]===1),fiyat=secim[2],ad=secim[3],anahtar=cikar.join(',');
   const l=o.items.find(i=>i.pid===p.id&&!i.sent&&!i.gift&&!i.note&&(i.por||1)===por&&(i.cikar||[]).join(',')===anahtar);
-  if(l)l.qty+=q;else o.items.push({pid:p.id,name:por===1.5?ad15(p):p.name,price:fiyat,cost:(p.cost||0)*por,vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por===1.5?{por}:{}),...(cikar.length?{cikar}:{})});
-  S.last=`${q}x ${por===1.5?ad15(p):p.name} ${fmt2.format(fiyat*q)}`;S.mult=1;S.scrollLn=true;touch(o.id);
+  if(l)l.qty+=q;else o.items.push({pid:p.id,name:ad,price:fiyat,cost:r2((p.cost||0)*(p.price?fiyat/p.price:1)),vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por!==1?{por}:{}),...(cikar.length?{cikar}:{})});
+  S.last=`${q}x ${ad} ${fmt2.format(fiyat*q)}`;S.mult=1;S.scrollLn=true;touch(o.id);
 }
 const salesOf=k=>Object.values(S.sales).filter(s=>s.day===k);
 const isClosed=k=>{const[y,m,d]=k.split('-');return!!S.stats[y+'-'+m]?.days?.[d]?.closed};
@@ -981,9 +983,9 @@ function mMove(){
 }
 function mUrun(m){
   const p=S.prods[m.pid];if(!p)return'';
-  const l=cikarListe(p),fiyat=m.por===1.5?p.price15:p.price;
+  const l=cikarListe(p),pl=porsiyonlar(p),fiyat=(pl.find(x=>x[0]===m.por)||pl.find(x=>x[0]===1))[2];
   return`<div class="md-h"><h2>${esc(p.name)}</h2>${close}</div>
-  ${p.price15>0?`<div><div class="lab" style="margin-bottom:5px">Porsiyon</div><div class="seg secim">${[[1,'1 porsiyon',p.price,p.name],[1.5,'1,5 porsiyon',p.price15,ad15(p)]].map(([n,a,f,ad])=>`<button data-a="urunPor" data-n="${n}" class="${m.por===n?'on':''}">${a} · ${tl(f)}<small>${esc(ad)}</small></button>`).join('')}</div></div>`:''}
+  ${pl.length>1?`<div><div class="lab" style="margin-bottom:5px">Porsiyon</div><div class="seg secim">${pl.map(([n,a,f,ad])=>`<button data-a="urunPor" data-n="${n}" class="${m.por===n?'on':''}">${a} · ${tl(f)}<small>${esc(ad)}</small></button>`).join('')}</div></div>`:''}
   ${l.length?`<div><div class="lab" style="margin-bottom:5px">İçindekiler</div><div class="malz">${l.map(x=>{const c=m.cikar.includes(x);return`<button class="btn${c?' cik':''}" data-a="urunCikar" data-v="${esc(x)}" aria-pressed="${c}">${c?esc(cikarYazi({cikar:[x]})):esc(x)}</button>`}).join('')}</div>
     <p style="margin:6px 0 0;color:var(--mut);font-size:14px">${m.cikar.length?'Fişte yazar: <b>'+esc(cikarYazi({cikar:l.filter(x=>m.cikar.includes(x))}))+'</b>':'Hiçbirine basmazsanız karışık olur. Çıkarılacak malzemeye dokunun.'}</p></div>`:''}
   <div class="acts"><div class="mult l"><button data-a="urunAdet" data-n="-1" aria-label="Azalt">−</button><button class="on" disabled>${m.q}</button><button data-a="urunAdet" data-n="1" aria-label="Artır">+</button></div>
@@ -998,6 +1000,7 @@ function mProd(m){
   <label class="field">Kategori<select id="p-c" name="cat" required>${cats.map(c=>`<option value="${c.id}"${p.cat===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
   <label class="field">Kod / barkod<input id="p-k" name="code" value="${esc(p.code)}"></label>
   <label class="field">Satış fiyatı (₺, KDV dahil)<input id="p-p" name="price" inputmode="decimal" value="${numIn(p.price)}" required></label>
+  <label class="field">Az porsiyon fiyatı (₺, boşsa yok)<input id="p-paz" name="priceAz" inputmode="decimal" value="${p.priceAz>0?numIn(p.priceAz):''}" placeholder="Yok"></label>
   <label class="field">1,5 porsiyon fiyatı (₺, boşsa yok)<input id="p-p15" name="price15" inputmode="decimal" value="${p.price15>0?numIn(p.price15):''}" placeholder="Yok"></label>
   <label class="field full">1,5 porsiyon adı (boşsa otomatik)<input id="p-n15" name="name15" value="${esc(p.name15||'')}" placeholder="${esc(p.name?ad15({name:p.name}):'Örn. Adana Dürüm (180 gr)')}"></label>
   <label class="field">Maliyet (₺, 1 porsiyon)<input id="p-o" name="cost" inputmode="decimal" value="${numIn(p.cost)}"></label>
@@ -1101,7 +1104,7 @@ const A={
     if(secenekli(p)){openM({t:'urun',pid:p.id,por:1,cikar:[],q:S.mult});return}
     satirEkle(p,1,[],S.mult);
   },
-  urunPor(e){S.modal.por=+e.n;paintM()},
+  urunPor(e){S.modal.por=e.n==='az'?'az':+e.n;paintM()},
   urunCikar(e){const m=S.modal,x=e.v;m.cikar=m.cikar.includes(x)?m.cikar.filter(y=>y!==x):[...m.cikar,x];paintM()},
   urunAdet(e){S.modal.q=Math.max(1,S.modal.q+ +e.n);paintM()},
   urunEkle(){const m=S.modal,p=S.prods[m.pid];if(!p)return closeM();const sira=cikarListe(p);satirEkle(p,m.por,sira.filter(x=>m.cikar.includes(x)),m.q);closeM()},
@@ -1285,6 +1288,8 @@ const F={
     const old=S.modal.p,p={...(old||{}),...(S.modal.asset?{asset:S.modal.asset}:{}),id:old?.id||uid('p'),name:d.name.trim(),cat:d.cat,code:d.code.trim(),price:parseNum(d.price),cost:parseNum(d.cost),vat:+d.vat,active:d.active==='1'};
     const p15=String(d.price15||'').trim()?parseNum(d.price15):0;if(p15>0)p.price15=p15;else delete p.price15;
     const n15=String(d.name15||'').trim();if(n15)p.name15=n15;else delete p.name15;
+    const paz=String(d.priceAz||'').trim()?parseNum(d.priceAz):0;if(paz>0)p.priceAz=paz;else delete p.priceAz;
+    if(p.priceAz>=p.price){toast('Az porsiyon fiyatı tam porsiyondan düşük olmalı.',1);return}
     if(!(p.price>0)){toast('Geçerli bir fiyat girin.',1);return}
     if(!p.cat){toast('Önce bir kategori ekleyin.',1);return}
     S.prods[p.id]=p;S.arm=null;closeM();render();await D.set('products',p.id,p);toast('Ürün kaydedildi');
