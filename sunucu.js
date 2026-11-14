@@ -1,12 +1,9 @@
-// Çini Kasa sunucusu. Bu bilgisayardan doğrudan, aynı ağdaki cihazlardan PIN ile açılır. Veriler veri.json dosyasında durur.
+// Çini Kasa sunucusu. Bu bilgisayardan da aynı ağdaki cihazlardan da şifreyle açılır. Veriler veri.json dosyasında durur.
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), os = require('os');
 const TUR = { '.html': 'text/html;charset=utf-8', '.js': 'text/javascript;charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.css': 'text/css;charset=utf-8', '.woff2': 'font/woff2', '.txt': 'text/plain;charset=utf-8' };
 const AD = /^[\w.:-]{1,200}$/, RESIM = /^image\/(png|jpeg|webp|gif)$/;
 
-const GIRIS = hata => `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kasa Girişi</title><style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#171310;color:#f6f0e7;font:16px system-ui,sans-serif;padding:16px;box-sizing:border-box}form{width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px}h1{margin:0;font-size:24px}
-input{padding:13px;border-radius:8px;border:1px solid #4a4036;background:#2a2420;color:inherit;font-size:22px;text-align:center;letter-spacing:.2em}button{padding:13px;border:0;border-radius:8px;background:#c8101c;color:#fff;font-size:17px;font-weight:600}p{margin:0;color:#ffcf0d}
-</style></head><body><form method="post" action="/giris"><h1>Kasa Girişi</h1>${hata ? `<p>${hata}</p>` : ''}<input name="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" autofocus required><button>Giriş</button></form></body></html>`;
+const sifreler = require('./lib/sifre');
 
 function baslat({ port = 4173, veriKlasoru, kok = __dirname, yedekKlasoru }) {
   const dosya = path.join(veriKlasoru, 'veri.json'), yedekler = path.join(veriKlasoru, 'yedek'), saatlik = path.join(veriKlasoru, 'saatlik'), bloblar = path.join(veriKlasoru, 'blob');
@@ -28,13 +25,14 @@ function baslat({ port = 4173, veriKlasoru, kok = __dirname, yedekKlasoru }) {
 
   let ag;
   try { ag = JSON.parse(fs.readFileSync(agDosya, 'utf8')); } catch { ag = {}; }
-  ag.pin = ag.pin || String(crypto.randomInt(100000, 1000000));
+  // Eski sürümlerin PIN'i yerine şifre gelir; ilk şifre KASA_SIFRE ya da 184904'tür.
+  if (!ag.sifre) { ag.sifre = sifreler.hashle(process.env.KASA_SIFRE || sifreler.VARSAYILAN); delete ag.pin; }
   ag.gizli = ag.gizli || crypto.randomBytes(24).toString('hex');
   const agKaydet = () => fs.writeFileSync(agDosya, JSON.stringify(ag), { mode: 0o600 });
   agKaydet();
-  const bilet = () => crypto.createHash('sha256').update(ag.gizli + ag.pin).digest('hex');
+  const bilet = () => crypto.createHash('sha256').update(ag.gizli + ag.sifre).digest('hex');
+  const cerez = () => `kasa=${bilet()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000`;
   const hatalar = new Map();
-  const yerelMi = q => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(q.socket.remoteAddress);
   const girdiMi = q => { const m = (q.headers.cookie || '').match(/(?:^|;\s*)kasa=([0-9a-f]{64})/); return !!m && crypto.timingSafeEqual(Buffer.from(m[1]), Buffer.from(bilet())); };
   const adresler = () => Object.values(os.networkInterfaces()).flat().filter(a => a.family === 'IPv4' && !a.internal).map(a => a.address);
   const dinleyen = new Set();
@@ -73,21 +71,23 @@ function baslat({ port = 4173, veriKlasoru, kok = __dirname, yedekKlasoru }) {
     const u = decodeURIComponent(new URL(q.url, 'http://x').pathname), son = (c, b = '') => { s.statusCode = c; s.end(b); };
     if (!new RegExp(`^(localhost|\\d+\\.\\d+\\.\\d+\\.\\d+|[\\w-]+\\.local):${port}$`, 'i').test(q.headers.host || '')) return son(403);
     try {
-      const yerel = yerelMi(q);
       if (u === '/giris') {
-        if (yerel) { s.statusCode = 302; s.setHeader('location', '/'); return s.end(); }
         s.setHeader('content-type', TUR['.html']);
-        if (q.method !== 'POST') return s.end(GIRIS());
+        if (q.method !== 'POST') return s.end(sifreler.sayfa());
         const ip = q.socket.remoteAddress, h = hatalar.get(ip) || { n: 0, t: 0 };
-        if (h.n >= 5 && Date.now() - h.t < 60000) return s.end(GIRIS('Çok fazla deneme. 1 dakika bekleyin.'));
-        const pin = new URLSearchParams((await govde(q, 1000)).toString()).get('pin') || '';
-        if (pin !== ag.pin) { hatalar.set(ip, { n: h.n >= 5 ? 1 : h.n + 1, t: Date.now() }); return s.end(GIRIS('PIN yanlış.')); }
+        if (h.n >= 5 && Date.now() - h.t < 60000) return s.end(sifreler.sayfa('Çok fazla deneme. 1 dakika bekleyin.'));
+        const girilen = new URLSearchParams((await govde(q, 1000)).toString()).get('sifre') || '';
+        if (!sifreler.dogrula(girilen, ag.sifre)) { hatalar.set(ip, { n: h.n >= 5 ? 1 : h.n + 1, t: Date.now() }); return s.end(sifreler.sayfa('Şifre yanlış.')); }
         hatalar.delete(ip);
-        s.statusCode = 302; s.setHeader('location', '/');
-        s.setHeader('set-cookie', `kasa=${bilet()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000`);
+        s.statusCode = 303; s.setHeader('location', '/'); s.setHeader('set-cookie', cerez());
         return s.end();
       }
-      if (!yerel && !girdiMi(q)) {
+      if (u === '/cikis') {
+        s.statusCode = 303; s.setHeader('location', '/giris');
+        s.setHeader('set-cookie', 'kasa=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+        return s.end();
+      }
+      if (!girdiMi(q)) {
         if (u.startsWith('/api/')) return son(401);
         s.statusCode = 302; s.setHeader('location', '/giris'); return s.end();
       }
@@ -99,14 +99,15 @@ function baslat({ port = 4173, veriKlasoru, kok = __dirname, yedekKlasoru }) {
           s.write(':\n\n'); dinleyen.add(s); q.on('close', () => dinleyen.delete(s)); return;
         }
         if (u === '/api/ag') {
+          s.setHeader('content-type', 'application/json;charset=utf-8');
           if (q.method === 'POST') {
-            const pin = String(JSON.parse(await govde(q, 1000)).pin || '').trim();
-            if (!/^\d{4,12}$/.test(pin)) return son(400);
-            ag.pin = pin; agKaydet();
-            if (!yerel) s.setHeader('set-cookie', `kasa=${bilet()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000`);
+            const { eski, yeni } = JSON.parse(await govde(q, 1000));
+            if (!sifreler.dogrula(eski, ag.sifre)) { s.statusCode = 400; return s.end(JSON.stringify({ hata: 'Mevcut şifre yanlış.' })); }
+            if (!sifreler.gecerli(yeni)) { s.statusCode = 400; return s.end(JSON.stringify({ hata: 'Yeni şifre 4 ile 64 karakter arasında olmalı.' })); }
+            ag.sifre = sifreler.hashle(yeni); agKaydet();
+            s.setHeader('set-cookie', cerez());
           }
-          s.setHeader('content-type', 'application/json');
-          return s.end(JSON.stringify({ pin: ag.pin, port, adresler: adresler(), ad: os.hostname().replace(/\.local$/, '') + '.local', yedek: disYedek }));
+          return s.end(JSON.stringify({ port, adresler: adresler(), ad: os.hostname().replace(/\.local$/, '') + '.local', yedek: disYedek }));
         }
         if (u === '/api/blob' && q.method === 'POST') {
           const t = q.headers['content-type'] || '';
@@ -149,10 +150,9 @@ if (require.main === module) {
   fs.mkdirSync(klasor, { recursive: true });
   const port = +process.env.KASA_PORT || 4173;
   baslat({ veriKlasoru: klasor, port, yedekKlasoru: process.env.KASA_YEDEK }).then(async r => {
-    const ag = await (await fetch(`http://127.0.0.1:${port}/api/ag`)).json();
     console.log('Bu bilgisayar : ' + r.url);
-    ag.adresler.forEach(a => console.log(`Ağdan giriş   : http://${a}:${port}`));
-    console.log('Giriş PIN\'i   : ' + ag.pin);
+    Object.values(os.networkInterfaces()).flat().filter(a => a.family === 'IPv4' && !a.internal).forEach(a => console.log(`Ağdan giriş   : http://${a.address}:${port}`));
+    console.log('Giriş şifresi : ilk kurulumda ' + sifreler.VARSAYILAN + ', Yönetim > Giriş ve Ağ bölümünden değiştirilir');
     console.log('Veri klasörü  : ' + klasor);
     console.log('\nKasa çalışıyor. Bu pencereyi kapatmayın.');
     for (const sinyal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sinyal, () => { r.bitir(); process.exit(0); });

@@ -38,14 +38,12 @@ npm run paketle:mac
 Vercel sürümünde kayıtlar Postgres veritabanında durur, girişte şifre sorulur ve cihazlar birkaç saniyede bir senkronize olur.
 
 1. Vercel'de **Add New > Project** ile bu depoyu içe aktarın. Framework Preset: **Other**. Diğer ayarlar `vercel.json` içinde.
-2. Projede **Storage > Create Database** ile bir Postgres veritabanı (ör. Neon) oluşturup projeye bağlayın. `DATABASE_URL` kendiliğinden eklenir. Başka bir Postgres kullanılacaksa bağlantı adresini `DATABASE_URL` olarak elle ekleyin.
-3. **Settings > Environment Variables** bölümüne ekleyin:
-   - `KASA_SIFRE`: kasaya giriş şifresi, en az 12 karakter.
-   - `KASA_GIZLI`: rastgele uzun bir metin, ör. `openssl rand -hex 32` çıktısı.
-4. **Deployments** bölümünden son dağıtımı **Redeploy** edin.
-5. Siteye girin. Eski kayıtları taşımak için **Yönetim > Veri > Yedekten geri yükle** ile kasanın yedek dosyasını seçin.
+2. Projede **Storage > Create Database** ile bir Postgres veritabanı (Neon veya Supabase) oluşturup projeye bağlayın. `DATABASE_URL` ya da `POSTGRES_URL` kendiliğinden eklenir.
+3. **Deployments** bölümünden son dağıtımı **Redeploy** edin.
+4. Siteye girin. İlk şifre `184904`; **Yönetim > Giriş ve Ağ** bölümünden hemen değiştirin.
+5. Eski kayıtları taşımak için **Yönetim > Veri > Yedekten geri yükle** ile kasanın yedek dosyasını seçin.
 
-Tablolar ilk istekte kendiliğinden kurulur; veritabanı boşsa menü ve masalar `baslangic.json` dosyasından yüklenir.
+İsteğe bağlı ortam değişkenleri: `KASA_SIFRE` yalnızca ilk kurulumda başlangıç şifresi olarak kullanılır; `KASA_GIZLI` oturum çerezlerini imzalayan anahtardır, verilmezse veritabanında rastgele üretilir. Tablolar ilk istekte kendiliğinden kurulur; veritabanı boşsa menü ve masalar `baslangic.json` dosyasından yüklenir.
 
 ## Veriler
 

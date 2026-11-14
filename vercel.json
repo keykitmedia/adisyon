@@ -7,6 +7,10 @@
       "destination": "/api/giris"
     },
     {
+      "source": "/cikis",
+      "destination": "/api/cikis"
+    },
+    {
       "source": "/_blob/:id",
       "destination": "/api/gorsel/:id"
     }

@@ -67,6 +67,7 @@ h1,h2,h3{margin:0;font-family:var(--f-d);font-weight:600;letter-spacing:.01em}
 /* butonlar ve form */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:8px 14px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);font-weight:600;white-space:nowrap}
 .btn:hover{border-color:var(--mut)}
+a.btn{text-decoration:none;color:inherit}a.btn.pri{color:var(--on)}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--on)}
 .btn.pri:hover{background:var(--accent-h)}
 .btn.dan{color:var(--red);border-color:var(--red);background:transparent}
@@ -774,7 +775,7 @@ function vUrun(){
 /* ---- yönetim ---- */
 function vYonetim(){
   const t=S.adm.tab,c=S.cfg;
-  const tabs=[['masa','Masa düzeni'],['isl','İşletme'],['fis','Fiş'],['ag','Ağ ve PIN'],['per','Personel'],['veri','Veri']];
+  const tabs=[['masa','Masa düzeni'],['isl','İşletme'],['fis','Fiş'],['ag','Giriş ve Ağ'],['per','Personel'],['veri','Veri']];
   let b='';
   if(t==='masa')b=`<div class="ad-h">${zoneTabs()}<div class="sp"></div><button class="btn" data-a="zoneM">Bölümler</button><button class="btn pri" data-a="tableM">Masa Ekle</button></div>
     <div class="note" style="margin-bottom:10px">Masaları sürükleyerek yerleştirin. Bir masaya dokununca adı, kişi sayısı ve şekli değişir.</div>
@@ -789,13 +790,7 @@ function vYonetim(){
     <label class="field">Banka<input id="c-banka" name="banka" value="${esc(c.banka)}"></label>
     <div class="acts full"><button class="btn pri">Kaydet</button></div></form></div>
 `;
-  if(t==='ag'&&S.ag?.bulut)b=`<div class="pnl" style="max-width:640px"><h2>Bulut sürümü</h2><p style="margin:0;color:var(--mut)">Bu kasa internette çalışıyor. Telefon, tablet veya bilgisayardan bu sitenin adresiyle girilir. Giriş şifresi Vercel'de <span class="mono">KASA_SIFRE</span> ayarından değiştirilir.</p></div>`;
-  else if(t==='ag')b=S.ag?`<div class="pnl" style="max-width:640px"><h2>Ağdan giriş</h2>
-    <p style="margin:0 0 10px;color:var(--mut)">Aynı Wi-Fi'deki telefon, tablet veya bilgisayarın tarayıcısına şu adresi yazın:</p>
-    <div class="ent num" style="font-size:18px;text-align:left;user-select:all">${S.ag.adresler.map(a=>`http://${esc(a)}:${S.ag.port}`).join('<br>')||'Ağ bağlantısı yok'}</div>
-    <p style="margin:10px 0;color:var(--mut)">IP değişirse şu adres de çalışır: <b class="mono">http://${esc(S.ag.ad)}:${S.ag.port}</b></p>
-    <form data-f="agPin" class="fg" style="grid-template-columns:minmax(0,1fr) auto;align-items:end"><label class="field">Giriş PIN'i<input id="ag-pin" name="pin" inputmode="numeric" value="${esc(S.ag.pin)}" required></label><button class="btn pri">PIN'i Kaydet</button></form>
-    <p style="margin:10px 0 0;color:var(--mut)">Yedekler: <span class="mono">${esc(S.ag.yedek)}</span></p></div>`:'<div class="empty"><b>Ağ bilgisi yükleniyor</b></div>';
+  if(t==='ag')b=girisAgHtml();
   if(t==='fis')b=fisAyarHtml(c);
   if(t==='per')b=`<div class="pnl" style="max-width:480px"><div class="rows">${(c.staff||[]).map((w,i)=>`<div><span>${esc(w)}</span><button class="btn sm dan" data-a="rmStaff" data-n="${i}">Çıkar</button></div>`).join('')}</div>
     <form class="fg" data-f="staff" style="margin-top:10px;grid-template-columns:minmax(0,1fr) auto"><input class="inp" id="newStaff" name="n" placeholder="Yeni personel adı" aria-label="Yeni personel adı" required><button class="btn pri">Ekle</button></form></div>`;
@@ -905,6 +900,24 @@ async function fisYazdir(ic){
 function ornekFis(){
   const i=[{name:'Adana Kebabı (180 gr)',qty:2,price:300,vat:10},{name:'Ayran',qty:2,price:40,vat:10},{name:'Uzun adlı deneme ürünü ve yanı',qty:1,price:1250.5,vat:10}];
   return{no:'DENEME',ts:Date.now(),label:'Masa',waiter:curW(),items:i,sub:1930.5,d:0,total:1930.5,vat:{10:175.5},pay:[{m:'cash',a:2000}],change:69.5};
+}
+function girisAgHtml(){
+  const a=S.ag;
+  const sifre=`<div class="pnl" style="max-width:640px"><h2>Giriş şifresi</h2>
+    <p style="margin:0 0 10px;color:var(--mut)">Kasa açılırken bu şifre sorulur. Değiştirince diğer cihazlar yeniden giriş yapar.</p>
+    <form data-f="sifreDegis" class="fg">
+      <label class="field full">Mevcut şifre<input id="s-eski" name="eski" type="password" autocomplete="current-password" required></label>
+      <label class="field">Yeni şifre<input id="s-yeni" name="yeni" type="password" autocomplete="new-password" minlength="4" maxlength="64" required></label>
+      <label class="field">Yeni şifre tekrar<input id="s-yeni2" name="yeni2" type="password" autocomplete="new-password" minlength="4" maxlength="64" required></label>
+      <div class="acts full"><a class="btn l" href="/cikis">Çıkış Yap</a><button class="btn pri">Şifreyi Değiştir</button></div>
+    </form></div>`;
+  if(!a)return sifre+'<div class="empty"><b>Ağ bilgisi yükleniyor</b></div>';
+  if(a.bulut)return sifre+`<div class="pnl" style="max-width:640px;margin-top:14px"><h2>Bulut sürümü</h2><p style="margin:0;color:var(--mut)">Bu kasa internette çalışıyor. Telefon, tablet veya bilgisayardan bu sitenin adresiyle, aynı şifreyle girilir.</p></div>`;
+  return sifre+`<div class="pnl" style="max-width:640px;margin-top:14px"><h2>Ağdan giriş</h2>
+    <p style="margin:0 0 10px;color:var(--mut)">Aynı Wi-Fi'deki telefon, tablet veya bilgisayarın tarayıcısına şu adresi yazın:</p>
+    <div class="ent num" style="font-size:18px;text-align:left;user-select:all">${a.adresler.map(x=>`http://${esc(x)}:${a.port}`).join('<br>')||'Ağ bağlantısı yok'}</div>
+    <p style="margin:10px 0;color:var(--mut)">IP değişirse şu adres de çalışır: <b class="mono">http://${esc(a.ad)}:${a.port}</b></p>
+    <p style="margin:10px 0 0;color:var(--mut)">Yedekler: <span class="mono">${esc(a.yedek)}</span></p></div>`;
 }
 function fisAyarHtml(c){
   const o=fisOlcu(),sayi=(k,l,v,min,max,st)=>`<label class="field">${l}<input id="f-${k}" data-c="fisAyar" data-k="${k}" type="text" inputmode="decimal" autocomplete="off" value="${String(v).replace('.',',')}"></label>`;
@@ -1250,7 +1263,13 @@ const A={
   },
 };
 const F={
-  async agPin(d){const r=await fetch('/api/ag',{method:'POST',headers:{'x-kasa':'1'},body:JSON.stringify({pin:d.pin})});if(!r.ok){toast('PIN 4-12 rakam olmalı.',1);return}S.ag=await r.json();render();toast('PIN kaydedildi. Ağdaki cihazlar yeniden giriş yapacak.')},
+  async sifreDegis(d){
+    if(d.yeni!==d.yeni2){toast('Yeni şifreler aynı değil.',1);return}
+    const r=await fetch('/api/ag',{method:'POST',headers:{'x-kasa':'1','content-type':'application/json'},body:JSON.stringify({eski:d.eski,yeni:d.yeni})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){toast(j.hata||'Şifre değiştirilemedi.',1);return}
+    S.ag=j;render();toast('Şifre değiştirildi. Diğer cihazlar yeniden giriş yapacak.');
+  },
   note(d){S.orders[S.order].items[S.sel].note=d.n.trim();touch(S.order);closeM()},
   disc(d){const o=S.orders[S.order],v=parseNum(d.v);if(v<=0){toast('İskonto değeri girin.',1);return}if(d.t==='p'&&v>100){toast('Yüzde 100 üzeri olamaz.',1);return}o.disc={t:d.t,v};touch(o.id);closeM()},
   async prod(d){
