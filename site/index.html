@@ -453,14 +453,17 @@ const ad15=p=>{
   const g=p.name.replace(/(\d+(?:[.,]\d+)?)\s*(gr|g|gram|kg)\b/i,(_,n,b)=>kat(n)+' '+b);
   return g!==p.name?g:p.name+' (1,5 porsiyon)';
 };
-const secenekli=p=>p.price15>0||p.priceAz>0||cikarListe(p).length>0;
+/* Ürüne özel sorular: her satır bir soru, seçenekler "/" ile ayrılır (ör. "Acılı / Acısız"). */
+const secimListe=p=>String(p?.secimler||'').split('\n').map(l=>l.split('/').map(x=>x.trim()).filter(Boolean)).filter(g=>g.length>=2);
+const secenekli=p=>p.price15>0||p.priceAz>0||cikarListe(p).length>0||secimListe(p).length>0;
+const satirNotu=i=>[...(i.sec||[]),cikarYazi(i)].filter(Boolean).join(', ');
 /* Porsiyon seçenekleri: az (fiyatı girildiyse), tam ve 1,5 (fiyatı girildiyse). */
 const porsiyonlar=p=>[...(p.priceAz>0?[['az','Az porsiyon',p.priceAz,p.name+' (az)']]:[]),[1,p.priceAz>0?'Tam porsiyon':'1 porsiyon',p.price,p.name],...(p.price15>0?[[1.5,'1,5 porsiyon',p.price15,ad15(p)]]:[])];
 const cikarYazi=i=>(i.cikar||[]).map(x=>siz(x.toLocaleLowerCase('tr')).replace(/^./,c=>c.toLocaleUpperCase('tr'))).join(', ');
-function satirEkle(p,por,cikar,q){
+function satirEkle(p,por,cikar,q,sec=[]){
   const o=ensureOrder(),secim=porsiyonlar(p).find(x=>x[0]===por)||porsiyonlar(p).find(x=>x[0]===1),fiyat=secim[2],ad=secim[3],anahtar=cikar.join(',');
-  const l=o.items.find(i=>i.pid===p.id&&!i.sent&&!i.gift&&!i.note&&(i.por||1)===por&&(i.cikar||[]).join(',')===anahtar);
-  if(l)l.qty+=q;else o.items.push({pid:p.id,name:ad,price:fiyat,cost:r2((p.cost||0)*(p.price?fiyat/p.price:1)),vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por!==1?{por}:{}),...(cikar.length?{cikar}:{})});
+  const l=o.items.find(i=>i.pid===p.id&&!i.sent&&!i.gift&&!i.note&&(i.por||1)===por&&(i.cikar||[]).join(',')===anahtar&&(i.sec||[]).join(',')===sec.join(','));
+  if(l)l.qty+=q;else o.items.push({pid:p.id,name:ad,price:fiyat,cost:r2((p.cost||0)*(p.price?fiyat/p.price:1)),vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por!==1?{por}:{}),...(cikar.length?{cikar}:{}),...(sec.length?{sec}:{})});
   S.last=`${q}x ${ad} ${fmt2.format(fiyat*q)}`;S.mult=1;S.scrollLn=true;touch(o.id);
 }
 const salesOf=k=>Object.values(S.sales).filter(s=>s.day===k);
@@ -620,7 +623,7 @@ function vAdisyon(){
     <div class="roll">
       <div class="roll-h"><span>${esc(lbl)}${o?` · ${durLabel(mins(o))}`:''}</span><span>Kişi <button data-a="guests" data-n="-1" aria-label="Kişi azalt">−</button>${o?.guests||S.draftG||2}<button data-a="guests" data-n="1" aria-label="Kişi artır">+</button></span></div>
       <div class="lines" data-k="lines">${items.length?items.map((i,x)=>`
-        <button class="ln${S.sel===x?' sel':''}" data-a="sel" data-n="${x}"><span>${i.qty}×</span><span>${esc(i.name)}${i.cikar?.length?`<small>${esc(cikarYazi(i))}</small>`:''}${i.note?`<small>${esc(i.note)}</small>`:''}${i.gift?'<small>İKRAM</small>':''}${i.ys?'<small>Menüde eşleşmedi</small>':''}${i.sent?'<small class="st">✓ mutfakta</small>':''}</span><span class="num">${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></button>
+        <button class="ln${S.sel===x?' sel':''}" data-a="sel" data-n="${x}"><span>${i.qty}×</span><span>${esc(i.name)}${satirNotu(i)?`<small>${esc(satirNotu(i))}</small>`:''}${i.note?`<small>${esc(i.note)}</small>`:''}${i.gift?'<small>İKRAM</small>':''}${i.ys?'<small>Menüde eşleşmedi</small>':''}${i.sent?'<small class="st">✓ mutfakta</small>':''}</span><span class="num">${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></button>
         ${S.sel===x?`<div class="ln-a"><button data-a="qty" data-n="-1" aria-label="Azalt">−1</button><button data-a="qty" data-n="1" aria-label="Artır">+1</button><button data-a="noteM">Not</button><button data-a="gift">${i.gift?'İkramı kaldır':'İkram'}</button><button class="d" data-a="rm">Sil</button></div>`:''}`).join(''):'<div class="empty" style="color:var(--ink2)">Adisyon boş.<br>Soldan ürün seçin.</div>'}</div>
       <div class="sums"><div><span>Ara toplam</span><span>${fmt2.format(t.sub)}</span></div>${t.d?`<div><span>İskonto</span><span>−${fmt2.format(t.d)}</span></div>`:''}<div><span>KDV dahil ${Object.entries(t.vat).map(([k,v])=>`%${k}: ${fmt2.format(v)}`).join(' · ')}</span></div>${o?.paid?`<div><span>Alınan</span><span>${fmt2.format(o.paid)}</span></div>`:''}<div class="t"><span>${o?.paid?'KALAN':'TOPLAM'}</span><span>${tl(t.total)}</span></div></div>
     </div>
@@ -867,7 +870,7 @@ function receiptHtml(s,feed){
   return`<div class="receipt${feed?' feed':''}"><h3>${esc(upTR(c.name))}</h3>${c.address?`<div class="c">${esc(c.address)}</div>`:''}${c.taxNo?`<div class="c">VKN ${esc(c.taxNo)}</div>`:''}<hr>
   <div class="r"><span>${/^\d/.test(s.no)?'Fiş ':''}${esc(s.no)}</span><span>${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${d.toTimeString().slice(0,5)}</span></div>
   <div class="r"><span>${esc(s.label)}</span><span>${esc(s.waiter)}</span></div><hr>
-  ${s.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.gift?' (ikram)':''}</span><span>${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></div>${i.cikar?.length?`<div style="padding-left:1.5em">${esc(cikarYazi(i))}</div>`:''}${i.note?`<div style="padding-left:1.5em">${esc(i.note)}</div>`:''}`).join('')}<hr>
+  ${s.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.gift?' (ikram)':''}</span><span>${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></div>${satirNotu(i)?`<div style="padding-left:1.5em">${esc(satirNotu(i))}</div>`:''}${i.note?`<div style="padding-left:1.5em">${esc(i.note)}</div>`:''}`).join('')}<hr>
   ${s.d?`<div class="r"><span>Ara toplam</span><span>${fmt2.format(s.sub)}</span></div><div class="r"><span>İskonto</span><span>-${fmt2.format(s.d)}</span></div>`:''}
   ${Object.entries(s.vat||{}).map(([k,v])=>`<div class="r"><span>KDV %${k}</span><span>${fmt2.format(v)}</span></div>`).join('')}
   <div class="r b"><span>TOPLAM</span><span>${tl(s.total)}</span></div><hr>
@@ -986,6 +989,7 @@ function mUrun(m){
   const l=cikarListe(p),pl=porsiyonlar(p),fiyat=(pl.find(x=>x[0]===m.por)||pl.find(x=>x[0]===1))[2];
   return`<div class="md-h"><h2>${esc(p.name)}</h2>${close}</div>
   ${pl.length>1?`<div><div class="lab" style="margin-bottom:5px">Porsiyon</div><div class="seg secim">${pl.map(([n,a,f,ad])=>`<button data-a="urunPor" data-n="${n}" class="${m.por===n?'on':''}">${a} · ${tl(f)}<small>${esc(ad)}</small></button>`).join('')}</div></div>`:''}
+  ${secimListe(p).map((g,gi)=>`<div><div class="lab" style="margin-bottom:5px">${esc(g.join(' / '))}</div><div class="seg secim">${g.map(x=>`<button data-a="urunSec" data-n="${gi}" data-v="${esc(x)}" class="${m.sec[gi]===x?'on':''}" aria-pressed="${m.sec[gi]===x}">${esc(x)}</button>`).join('')}</div></div>`).join('')}
   ${l.length?`<div><div class="lab" style="margin-bottom:5px">İçindekiler</div><div class="malz">${l.map(x=>{const c=m.cikar.includes(x);return`<button class="btn${c?' cik':''}" data-a="urunCikar" data-v="${esc(x)}" aria-pressed="${c}">${c?esc(cikarYazi({cikar:[x]})):esc(x)}</button>`}).join('')}</div>
     <p style="margin:6px 0 0;color:var(--mut);font-size:14px">${m.cikar.length?'Fişte yazar: <b>'+esc(cikarYazi({cikar:l.filter(x=>m.cikar.includes(x))}))+'</b>':'Hiçbirine basmazsanız karışık olur. Çıkarılacak malzemeye dokunun.'}</p></div>`:''}
   <div class="acts"><div class="mult l"><button data-a="urunAdet" data-n="-1" aria-label="Azalt">−</button><button class="on" disabled>${m.q}</button><button data-a="urunAdet" data-n="1" aria-label="Artır">+</button></div>
@@ -1002,6 +1006,7 @@ function mProd(m){
   <label class="field">Satış fiyatı (₺, KDV dahil)<input id="p-p" name="price" inputmode="decimal" value="${numIn(p.price)}" required></label>
   <label class="field">Az porsiyon fiyatı (₺, boşsa yok)<input id="p-paz" name="priceAz" inputmode="decimal" value="${p.priceAz>0?numIn(p.priceAz):''}" placeholder="Yok"></label>
   <label class="field">1,5 porsiyon fiyatı (₺, boşsa yok)<input id="p-p15" name="price15" inputmode="decimal" value="${p.price15>0?numIn(p.price15):''}" placeholder="Yok"></label>
+  <label class="field full">Siparişte sorulacaklar (her satıra bir soru, seçenekleri / ile ayırın)<textarea id="p-sec" name="secimler" rows="3" placeholder="Acılı / Acısız&#10;Soğanlı / Soğansız">${esc(p.secimler||'')}</textarea><span style="font-weight:500">Örnek: <button type="button" class="btn sm" data-a="secOrnek" data-v="Acılı / Acısız">Acılı / Acısız</button> <button type="button" class="btn sm" data-a="secOrnek" data-v="Soğanlı / Soğansız">Soğanlı / Soğansız</button></span></label>
   <label class="field full">1,5 porsiyon adı (boşsa otomatik)<input id="p-n15" name="name15" value="${esc(p.name15||'')}" placeholder="${esc(p.name?ad15({name:p.name}):'Örn. Adana Dürüm (180 gr)')}"></label>
   <label class="field">Maliyet (₺, 1 porsiyon)<input id="p-o" name="cost" inputmode="decimal" value="${numIn(p.cost)}"></label>
   <label class="field">KDV oranı<select id="p-v" name="vat">${[1,10,20].map(v=>`<option value="${v}"${(p.vat??10)==v?' selected':''}>%${v}</option>`).join('')}</select></label>
@@ -1101,13 +1106,15 @@ const A={
   mult(e){S.mult=+e.n;render()},
   add(e){
     const p=S.prods[e.id];if(!p)return;
-    if(secenekli(p)){openM({t:'urun',pid:p.id,por:1,cikar:[],q:S.mult});return}
+    if(secenekli(p)){openM({t:'urun',pid:p.id,por:1,cikar:[],sec:{},q:S.mult});return}
     satirEkle(p,1,[],S.mult);
   },
   urunPor(e){S.modal.por=e.n==='az'?'az':+e.n;paintM()},
   urunCikar(e){const m=S.modal,x=e.v;m.cikar=m.cikar.includes(x)?m.cikar.filter(y=>y!==x):[...m.cikar,x];paintM()},
+  secOrnek(e){const t=$('#p-sec');if(!t)return;const l=t.value.split('\n').map(x=>x.trim()).filter(Boolean);if(!l.includes(e.v))l.push(e.v);t.value=l.join('\n')},
+  urunSec(e){const m=S.modal,g=+e.n;m.sec[g]=m.sec[g]===e.v?undefined:e.v;paintM()},
   urunAdet(e){S.modal.q=Math.max(1,S.modal.q+ +e.n);paintM()},
-  urunEkle(){const m=S.modal,p=S.prods[m.pid];if(!p)return closeM();const sira=cikarListe(p);satirEkle(p,m.por,sira.filter(x=>m.cikar.includes(x)),m.q);closeM()},
+  urunEkle(){const m=S.modal,p=S.prods[m.pid];if(!p)return closeM();const sira=cikarListe(p),sec=secimListe(p).map((_,g)=>m.sec[g]).filter(Boolean);satirEkle(p,m.por,sira.filter(x=>m.cikar.includes(x)),m.q,sec);closeM()},
   sel(e){S.sel=S.sel===+e.n?null:+e.n;render()},
   qty(e){const o=S.orders[S.order],i=o.items[S.sel];i.qty+=+e.n;if(i.qty<=0){o.items.splice(S.sel,1);S.sel=null}touch(o.id)},
   rm(){const o=S.orders[S.order];o.items.splice(S.sel,1);S.sel=null;touch(o.id)},
@@ -1288,6 +1295,7 @@ const F={
     const old=S.modal.p,p={...(old||{}),...(S.modal.asset?{asset:S.modal.asset}:{}),id:old?.id||uid('p'),name:d.name.trim(),cat:d.cat,code:d.code.trim(),price:parseNum(d.price),cost:parseNum(d.cost),vat:+d.vat,active:d.active==='1'};
     const p15=String(d.price15||'').trim()?parseNum(d.price15):0;if(p15>0)p.price15=p15;else delete p.price15;
     const n15=String(d.name15||'').trim();if(n15)p.name15=n15;else delete p.name15;
+    const sm=secimListe({secimler:d.secimler}).map(g=>g.join(' / ')).join('\n');if(sm)p.secimler=sm;else delete p.secimler;
     const paz=String(d.priceAz||'').trim()?parseNum(d.priceAz):0;if(paz>0)p.priceAz=paz;else delete p.priceAz;
     if(p.priceAz>=p.price){toast('Az porsiyon fiyatı tam porsiyondan düşük olmalı.',1);return}
     if(!(p.price>0)){toast('Geçerli bir fiyat girin.',1);return}
