@@ -111,6 +111,10 @@ a.btn{text-decoration:none;color:inherit}a.btn.pri{color:var(--on)}
 .tb.st-hesap .s{color:inherit}
 .tb.st-gec{background:var(--accent);border:2px solid var(--accent);color:var(--on)}
 .tb.st-gec .s{color:inherit}
+.tb.renkli{border:3px solid var(--tr)}.tb.renkli.st-bos{background:color-mix(in srgb,var(--tr) 20%,var(--panel))}
+.renkler{display:flex;flex-wrap:wrap;gap:6px}.renk{position:relative;display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;border:1px solid var(--line);cursor:pointer;color:var(--fg);font-weight:600}
+.renk::before{content:'';width:16px;height:16px;border-radius:50%;background:var(--r,transparent);border:1px dashed var(--mut)}.renk:not(.yok)::before{border:0}
+.renk input{position:absolute;opacity:0;pointer-events:none}.renk:has(input:checked){border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.renk:has(input:focus-visible){outline:2px solid var(--accent)}
 .floor.edit .tb{cursor:grab;touch-action:none}
 .side{border-left:1px solid var(--line);background:var(--panel);padding:14px;overflow:auto;display:flex;flex-direction:column;gap:16px}
 .lab{font:600 13px var(--f-b);color:var(--mut);letter-spacing:.05em;text-transform:uppercase}
@@ -373,9 +377,9 @@ let assets=null;
 const DEF_CFG={name:'İşletmem',address:'',taxNo:'',footer:'Bizi tercih ettiğiniz için teşekkürler',zones:[{id:'salon',name:'Salon'}],staff:['Kasa'],zNo:0};
 const S={ready:false,local:false,cfg:{...DEF_CFG},cats:{},prods:{},tables:{},orders:{},sales:{},stats:{},
   view:'masalar',zone:null,order:null,cat:null,q:'',mult:1,sel:null,last:'',showTk:false,
-  rep:{p:'ay',d:dk()},dayList:null,dayListKey:null,
+  rep:{p:'ay',d:dk(),sube:'tum'},dayList:null,dayListKey:null,
   adm:{cat:'',q:'',tab:'masa'},modal:null,waiter:null};
-try{S.waiter=localStorage.getItem('cini-waiter')}catch{}
+try{S.waiter=localStorage.getItem('cini-waiter');S.sube=localStorage.getItem('cini-sube')||'1'}catch{}
 
 /* ---- veri katmanı: db varsa paylaşımlı, yoksa bu cihazda ---- */
 let db=null,local={};const lsn={};const LS='cini-kasa-v1';
@@ -466,13 +470,23 @@ function satirEkle(p,por,cikar,q,sec=[]){
   if(l)l.qty+=q;else o.items.push({pid:p.id,name:ad,price:fiyat,cost:r2((p.cost||0)*(p.price?fiyat/p.price:1)),vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por!==1?{por}:{}),...(cikar.length?{cikar}:{}),...(sec.length?{sec}:{})});
   S.last=`${q}x ${ad} ${fmt2.format(fiyat*q)}`;S.mult=1;S.scrollLn=true;touch(o.id);
 }
+/* İki şube: masa, paket ve fiş şubeye bağlıdır. Şubesi yazılmamış eski kayıtlar 1. şubedir. */
+const SUBELER=()=>{const a=S.cfg.subeler||{};return[['1',a['1']||'1. Şube'],['2',a['2']||'2. Şube']]};
+const subeAd=id=>SUBELER().find(x=>x[0]===String(id||'1'))[1];
+const subeOf=x=>String(x?.sube||'1');
+const aktifSube=()=>S.sube==='2'?'2':'1';
+const orderSube=o=>S.tables[o?.table]?subeOf(S.tables[o.table]):subeOf(o);
+const MASA_RENK=[['','Renksiz'],['#2c6cb0','Mavi'],['#1c7a45','Yeşil'],['#7a4aa0','Mor'],['#d6418f','Pembe'],['#0b8f8c','Turkuaz'],['#8a5a2b','Kahverengi'],['#5e6670','Gri']];
 const salesOf=k=>Object.values(S.sales).filter(s=>s.day===k);
 const isClosed=k=>{const[y,m,d]=k.split('-');return!!S.stats[y+'-'+m]?.days?.[d]?.closed};
-function dayRoll(k){
-  const[y,m,d]=k.split('-'),doc=S.stats[y+'-'+m],st=doc?.days?.[d];
-  if(st?.closed)return{...st,nm:doc.nm||{}};
-  const l=salesOf(k);if(l.length)return rollSales(l);
-  return st?{...st,nm:doc.nm||{}}:null;
+function dayRoll(k,sube='tum'){
+  const[y,m,d]=k.split('-'),doc=S.stats[y+'-'+m],st=doc?.days?.[d],nm=doc?.nm||{};
+  // Kapanmış gün: şube ayrımı Z raporuna yazılmıştır; ayrımı olmayan eski günler 1. şubeye aittir.
+  const kayit=()=>{if(!st)return null;if(sube==='tum')return{...st,nm};if(st.sb)return st.sb[sube]?{...st.sb[sube],nm}:null;return sube==='1'?{...st,nm}:null};
+  if(st?.closed)return kayit();
+  const all=salesOf(k);
+  if(all.length){const l=sube==='tum'?all:all.filter(s=>subeOf(s)===sube);return l.length?rollSales(l):null}
+  return kayit();
 }
 function bizDay(){let k=dk();while(isClosed(k))k=addDays(k,1);return k}
 function openDays(){
@@ -570,33 +584,36 @@ function paint(){
 /* ---- masalar ---- */
 function floorHtml(edit){
   const zone=S.zone||S.cfg.zones?.[0]?.id;
-  const ts=Object.values(S.tables).filter(t=>t.zone===zone).sort((a,b)=>a.name.localeCompare(b.name,'tr',{numeric:true}));
+  const ts=Object.values(S.tables).filter(t=>t.zone===zone&&subeOf(t)===aktifSube()).sort((a,b)=>a.name.localeCompare(b.name,'tr',{numeric:true}));
   if(!ts.length)return`<div class="floor"><div class="empty"><b>Bu bölümde masa yok</b>${edit?'':'Yönetim ekranından ilk masayı ekleyin.'}${edit?'':'<br><button class="btn pri" data-a="nav" data-v="yonetim">Masa Ekle</button>'}</div></div>`;
   return`<div class="floor${edit?' edit':''}" id="floor">${ts.map(t=>{
     const o=S.orders[t.id],st=tStatus(o),tt=totals(o),n=t.seats||4;
     const stL={bos:`${n} kişilik`,dolu:durLabel(mins(o||{opened:Date.now()})),hesap:'Hesap istendi',gec:durLabel(mins(o||{opened:Date.now()}))}[st];
     const ch=Array.from({length:n},(_,i)=>{const a=i/n*Math.PI*2+Math.PI/n,s=Math.sin(a),c=Math.cos(a),k=t.shape==='round'?1:1/Math.max(Math.abs(s),Math.abs(c));return`<i class="ch" style="left:${50+57*k*s}%;top:${50-57*k*c}%"></i>`}).join('');
-    return`<button class="tb ${t.shape||'square'} st-${st}" style="left:${t.x}%;top:${t.y}%" data-${edit?'t':'a="open" data-id'}="${t.id}" ${edit?`data-drag="${t.id}"`:''} aria-label="${esc(t.name)}, ${st==='bos'?'boş':stL}">${ch}<span class="n">${esc(t.name)}</span><span class="s">${esc(stL)}</span>${st==='bos'?'':`<span class="a num">${tl0(tt.total)}</span>`}</button>`}).join('')}</div>`;
+    return`<button class="tb ${t.shape||'square'} st-${st}${t.renk?' renkli':''}" style="left:${t.x}%;top:${t.y}%${t.renk?`;--tr:${esc(t.renk)}`:''}" data-${edit?'t':'a="open" data-id'}="${t.id}" ${edit?`data-drag="${t.id}"`:''} aria-label="${esc(t.name)}, ${st==='bos'?'boş':stL}">${ch}<span class="n">${esc(t.name)}</span><span class="s">${esc(stL)}</span>${st==='bos'?'':`<span class="a num">${tl0(tt.total)}</span>`}</button>`}).join('')}</div>`;
 }
+function subeTabs(){return`<div class="seg subeseg" role="tablist" aria-label="Şube">${SUBELER().map(([id,ad])=>{
+  const n=Object.values(S.tables).filter(t=>subeOf(t)===id&&tStatus(S.orders[t.id])!=='bos').length;
+  return`<button data-a="subeSec" data-v="${id}" class="${aktifSube()===id?'on':''}">${esc(ad)}${n?` · ${n}`:''}</button>`}).join('')}</div>`}
 function zoneTabs(){if((S.cfg.zones||[]).length<2)return'';return`<div class="seg" role="tablist">${(S.cfg.zones||[]).map(z=>{
-  const n=Object.values(S.tables).filter(t=>t.zone===z.id&&tStatus(S.orders[t.id])!=='bos').length;
+  const n=Object.values(S.tables).filter(t=>t.zone===z.id&&subeOf(t)===aktifSube()&&tStatus(S.orders[t.id])!=='bos').length;
   return`<button data-a="zone" data-id="${z.id}" class="${(S.zone||S.cfg.zones[0].id)===z.id?'on':''}">${esc(z.name)}${n?` · ${n}`:''}</button>`}).join('')}</div>`}
 function vMasalar(){
-  const all=Object.values(S.tables),cnt={bos:0,dolu:0,hesap:0,gec:0};
+  const sb=aktifSube(),all=Object.values(S.tables).filter(t=>subeOf(t)===sb),cnt={bos:0,dolu:0,hesap:0,gec:0};
   all.forEach(t=>cnt[tStatus(S.orders[t.id])]++);
-  const open=Object.values(S.orders).filter(o=>(o.items||[]).length);
+  const open=Object.values(S.orders).filter(o=>(o.items||[]).length&&orderSube(o)===sb);
   const openT=open.reduce((a,o)=>a+totals(o).total,0);
-  const today=dayRoll(bizDay())||emptyRoll();
+  const today=dayRoll(bizDay(),sb)||emptyRoll();
   const paket=open.filter(o=>!S.tables[o.table]);
-  const lastS=salesOf(bizDay()).sort((a,b)=>b.ts-a.ts).slice(0,5);
+  const lastS=salesOf(bizDay()).filter(s=>subeOf(s)===sb).sort((a,b)=>b.ts-a.ts).slice(0,5);
   return`<div class="fl-wrap"><div class="fl-main">
-    <div class="fl-head">${zoneTabs()}
+    <div class="fl-head">${subeTabs()}${zoneTabs()}
       <div class="legend"><span><i class="lg"></i>Boş <b>${cnt.bos}</b></span><span><i class="lg dolu"></i>Dolu <b>${cnt.dolu}</b></span><span><i class="lg hesap"></i>Hesap <b>${cnt.hesap}</b></span><span><i class="lg gec"></i>90 dk+ <b>${cnt.gec}</b></span></div>
       <div class="sp"></div><button class="btn pri" data-a="paket">Paket / Gel-Al</button></div>
     ${paket.length?`<div class="pk"><span class="lab">Açık paketler</span>${paket.map(o=>`<button class="btn sm" data-a="open" data-id="${o.id}">${esc(o.label)} · <b class="num">${tl0(totals(o).total)}</b></button>`).join('')}</div>`:''}
     ${floorHtml(false)}</div>
   <aside class="side">
-    <div><div class="lab">Bugünkü ciro</div><div class="bigv num">${tl(today.c)}</div>
+    <div><div class="lab">Bugünkü ciro · ${esc(subeAd(sb))}</div><div class="bigv num">${tl(today.c)}</div>
       <div class="rows"><div><span>Fiş sayısı</span><b class="num">${today.n}</b></div><div><span>Açık masa tutarı</span><b class="num">${tl(openT)}</b></div><div><span>Nakit / Kart</span><b class="num">${tl0(today.cash)} / ${tl0(today.card+today.meal)}</b></div></div></div>
     <div><div class="lab">Son fişler</div>${lastS.length?`<div class="rows">${lastS.map(s=>`<button data-a="showSale" data-id="${s.id}"><span>${esc(s.label)} <span class="m">${new Date(s.ts).toTimeString().slice(0,5)}</span></span><b class="num ${s.voided?'vd':''}">${tl(s.total)}</b></button>`).join('')}</div>`:'<div class="m" style="color:var(--mut);padding-top:6px">Bugün henüz fiş kesilmedi.</div>'}</div>
   </aside></div>`;
@@ -640,7 +657,7 @@ function vAdisyon(){
 }
 function ensureOrder(){
   let o=S.orders[S.order];
-  if(!o){delete gone[S.order];const t=S.tables[S.order];o=S.orders[S.order]={id:S.order,table:t?t.id:null,label:t?t.name:(S.pendingLabel||'Paket'),items:[],opened:Date.now(),waiter:curW(),guests:S.draftG||Math.min(t?.seats||2,2)};S.draftG=null}
+  if(!o){delete gone[S.order];const t=S.tables[S.order];o=S.orders[S.order]={id:S.order,table:t?t.id:null,sube:t?subeOf(t):aktifSube(),label:t?t.name:(S.pendingLabel||'Paket'),items:[],opened:Date.now(),waiter:curW(),guests:S.draftG||Math.min(t?.seats||2,2)};S.draftG=null}
   return o;
 }
 const dirty={},writing={};
@@ -657,7 +674,7 @@ async function flush(id){
 /* ---- raporlar ---- */
 function report(){
   const{p,d}=S.rep,base=pd(d),y=base.getFullYear(),m=base.getMonth(),today=dk();
-  const sum=keys=>keys.reduce((a,k)=>merge(a,dayRoll(k)),emptyRoll());
+  const sb=S.rep.sube||'tum',sum=keys=>keys.reduce((a,k)=>merge(a,dayRoll(k,sb)),emptyRoll());
   const monthKeys=(yy,mm)=>Array.from({length:new Date(yy,mm+1,0).getDate()},(_,i)=>dk(new Date(yy,mm,i+1)));
   let title,series,cur,prevLbl,axisEvery;
   if(p==='gun'){
@@ -668,7 +685,7 @@ function report(){
     title=`${dayLabel(d)}, ${GUN[base.getDay()]}`;prevLbl='Geçen hafta aynı gün';axisEvery=2;
   }else if(p==='ay'){
     const ks=monthKeys(y,m),pk=monthKeys(m?y:y-1,m?m-1:11);cur=sum(ks);
-    series=ks.map((k,i)=>{const r=dayRoll(k);return{l:String(i+1),tt:`${i+1} ${AY[m]}`,v:k>today?null:(r?.c||0),p:pk[i]?(dayRoll(pk[i])?.c||0):null,k}});
+    series=ks.map((k,i)=>{const r=dayRoll(k,sb);return{l:String(i+1),tt:`${i+1} ${AY[m]}`,v:k>today?null:(r?.c||0),p:pk[i]?(dayRoll(pk[i],sb)?.c||0):null,k}});
     title=`${AY[m]} ${y}`;prevLbl=`${AY[m?m-1:11]}`;axisEvery=window.innerWidth<760?5:2;
   }else{
     const months=AY.map((_,i)=>sum(monthKeys(y,i))),pm=AY.map((_,i)=>sum(monthKeys(y-1,i)));cur=months.reduce(merge,emptyRoll());
@@ -697,6 +714,7 @@ function vRapor(){
   <div class="rp-h"><h1>${esc(R.title)}</h1>
     <div class="seg"><button data-a="per" data-v="gun" class="${p==='gun'?'on':''}">Günlük</button><button data-a="per" data-v="ay" class="${p==='ay'?'on':''}">Aylık</button><button data-a="per" data-v="yil" class="${p==='yil'?'on':''}">Yıllık</button></div>
     <div class="dn"><button class="btn" data-a="shift" data-n="-1" aria-label="Önceki">‹</button><button class="btn" data-a="shift" data-n="0">Bugün</button><button class="btn" data-a="shift" data-n="1" aria-label="Sonraki">›</button></div>
+    <div class="seg">${[['tum','Tümü'],...SUBELER()].map(([id,ad])=>`<button data-a="repSube" data-v="${id}" class="${(S.rep.sube||'tum')===id?'on':''}">${esc(ad)}</button>`).join('')}</div>
     <button class="btn" data-a="csv">CSV İndir</button>
     ${p==='gun'?`<button class="btn" data-a="zM" data-x="1">X Raporu</button><button class="btn pri" data-a="zM" ${closed?'disabled':''}>${closed?'Z Alındı':'Z Raporu Al'}</button>`:''}
   </div>
@@ -727,6 +745,7 @@ function dayListHtml(){
   const k=S.rep.d;
   let l=salesOf(k);
   if(!l.length&&S.dayListKey===k&&S.dayList)l=S.dayList;
+  const rs=S.rep.sube||'tum';if(rs!=='tum')l=l.filter(s=>subeOf(s)===rs);
   if(!l.length)return`<div class="note">${S.dayListKey===k?'Bu günün fiş ayrıntısı yok. Fişler 90 gün saklanır, ciro toplamları kalıcıdır.':'Fişler yükleniyor.'}</div>`;
   return`<div class="tbl-w"><table><tr><th>No</th><th>Saat</th><th>Masa</th><th>Kasiyer</th><th>Ödeme</th><th class="r">Tutar</th><th></th></tr>${l.slice().sort((a,b)=>b.ts-a.ts).map(s=>`<tr data-a="showSale" data-id="${s.id}" style="cursor:pointer"><td class="mono">${esc(s.no)}</td><td>${new Date(s.ts).toTimeString().slice(0,5)}</td><td>${esc(s.label)}</td><td>${esc(s.waiter)}</td><td>${(s.pay||[]).map(p=>PAY[p.m]).join(', ')}</td><td class="r ${s.voided?'vd':''}">${tl(s.total)}</td><td class="r"><button class="btn sm" data-a="fisYazdirId" data-id="${s.id}" aria-label="Fiş ${esc(s.no)} yazdır">Yazdır</button></td></tr>`).join('')}</table></div>`;
 }
@@ -789,7 +808,7 @@ function vYonetim(){
   const t=S.adm.tab,c=S.cfg;
   const tabs=[['masa','Masa düzeni'],['isl','İşletme'],['fis','Fiş'],['ag','Giriş ve Ağ'],['per','Personel'],['veri','Veri']];
   let b='';
-  if(t==='masa')b=`<div class="ad-h">${zoneTabs()}<div class="sp"></div><button class="btn" data-a="zoneM">Bölümler</button><button class="btn pri" data-a="tableM">Masa Ekle</button></div>
+  if(t==='masa')b=`<div class="ad-h">${subeTabs()}${zoneTabs()}<div class="sp"></div><button class="btn" data-a="zoneM">Bölümler</button><button class="btn pri" data-a="tableM">Masa Ekle</button></div>
     <div class="note" style="margin-bottom:10px">Masaları sürükleyerek yerleştirin. Bir masaya dokununca adı, kişi sayısı ve şekli değişir.</div>
     <div style="display:flex;min-height:620px">${floorHtml(true)}</div>`;
   if(t==='isl')b=`<div class="pnl" style="max-width:640px"><form class="fg" data-f="biz">
@@ -797,6 +816,8 @@ function vYonetim(){
     <label class="field full">Adres<input id="c-address" name="address" value="${esc(c.address)}"></label>
     <label class="field">Vergi no<input id="c-tax" name="taxNo" value="${esc(c.taxNo)}"></label>
     <label class="field">Fiş alt yazısı<input id="c-foot" name="footer" value="${esc(c.footer)}"></label>
+    <label class="field">1. şubenin adı<input id="c-sb1" name="sube1" value="${esc(subeAd('1'))}" required></label>
+    <label class="field">2. şubenin adı<input id="c-sb2" name="sube2" value="${esc(subeAd('2'))}" required></label>
     <label class="field full">IBAN<input id="c-iban" name="iban" value="${esc(ibanGoster(c.iban))}" placeholder="TR00 0000 0000 0000 0000 0000 00" autocomplete="off"></label>
     <label class="field">Hesap sahibi<input id="c-ibanad" name="ibanAd" value="${esc(c.ibanAd)}" placeholder="${esc(c.name)}"></label>
     <label class="field">Banka<input id="c-banka" name="banka" value="${esc(c.banka)}"></label>
@@ -867,7 +888,7 @@ function mPay(m){
 }
 function receiptHtml(s,feed){
   const c=S.cfg,d=new Date(s.ts);
-  return`<div class="receipt${feed?' feed':''}"><h3>${esc(upTR(c.name))}</h3>${c.address?`<div class="c">${esc(c.address)}</div>`:''}${c.taxNo?`<div class="c">VKN ${esc(c.taxNo)}</div>`:''}<hr>
+  return`<div class="receipt${feed?' feed':''}"><h3>${esc(upTR(c.name))}</h3><div class="c">${esc(subeAd(s.sube))}</div>${c.address?`<div class="c">${esc(c.address)}</div>`:''}${c.taxNo?`<div class="c">VKN ${esc(c.taxNo)}</div>`:''}<hr>
   <div class="r"><span>${/^\d/.test(s.no)?'Fiş ':''}${esc(s.no)}</span><span>${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${d.toTimeString().slice(0,5)}</span></div>
   <div class="r"><span>${esc(s.label)}</span><span>${esc(s.waiter)}</span></div><hr>
   ${s.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.gift?' (ikram)':''}</span><span>${i.gift?'0,00':fmt2.format(i.price*i.qty)}</span></div>${satirNotu(i)?`<div style="padding-left:1.5em">${esc(satirNotu(i))}</div>`:''}${i.note?`<div style="padding-left:1.5em">${esc(i.note)}</div>`:''}`).join('')}<hr>
@@ -958,7 +979,7 @@ function fisAyarHtml(c){
 }
 function adisyonFis(o){
   const t=totals(o);
-  return{no:'ADİSYON',ts:Date.now(),label:orderLabel(o),waiter:o.waiter||curW(),items:o.items,sub:t.sub,d:t.d,total:t.total,vat:t.vat,pay:o.paid?[{m:'once',a:o.paid}]:[],change:0};
+  return{no:'ADİSYON',ts:Date.now(),sube:orderSube(o),label:orderLabel(o),waiter:o.waiter||curW(),items:o.items,sub:t.sub,d:t.d,total:t.total,vat:t.vat,pay:o.paid?[{m:'once',a:o.paid}]:[],change:0};
 }
 function mReceipt(m){
   const s=m.sale,can=!s.voided&&!isClosed(s.day);
@@ -1039,6 +1060,8 @@ function mTable(m){
   <form data-f="table" class="fg"><label class="field">Masa adı<input id="t-n" name="name" value="${esc(t.name)}" required></label>
   <label class="field">Kişi sayısı<input id="t-s" name="seats" inputmode="numeric" value="${t.seats||4}"></label>
   <label class="field">Bölüm<select id="t-z" name="zone">${(S.cfg.zones||[]).map(z=>`<option value="${z.id}"${(t.zone||S.zone||S.cfg.zones[0].id)===z.id?' selected':''}>${esc(z.name)}</option>`).join('')}</select></label>
+  <label class="field">Şube<select id="t-sb" name="sube">${SUBELER().map(([id,ad])=>`<option value="${id}"${(t.sube?subeOf(t):aktifSube())===id?' selected':''}>${esc(ad)}</option>`).join('')}</select></label>
+  <div class="field full">Masa rengi (isteğe bağlı)<div class="renkler">${MASA_RENK.map(([v,ad])=>`<label class="renk${v?'':' yok'}" style="${v?`--r:${v}`:''}"><input type="radio" name="renk" value="${v}"${(t.renk||'')===v?' checked':''}><span>${ad}</span></label>`).join('')}</div></div>
   <label class="field">Şekil<select id="t-h" name="shape">${[['square','Kare'],['round','Yuvarlak'],['rect','Dikdörtgen']].map(([v,l])=>`<option value="${v}"${(t.shape||'square')===v?' selected':''}>${l}</option>`).join('')}</select></label>
   <div class="acts full">${t.id?`<button type="button" class="btn dan l${S.arm==='table'?' arm':''}" data-a="delT">${S.arm==='table'?'Evet, sil':'Masayı Sil'}</button>`:''}<button class="btn pri">Kaydet</button></div></form>`;
 }
@@ -1055,6 +1078,7 @@ function mZ(m){
   <div class="r"><span>Nakit</span><span>${fmt2.format(r.cash)}</span></div><div class="r"><span>Kredi kartı</span><span>${fmt2.format(r.card)}</span></div><div class="r"><span>IBAN / Havale</span><span>${fmt2.format(r.iban||0)}</span></div>${r.meal?`<div class="r"><span>Yemek kartı</span><span>${fmt2.format(r.meal)}</span></div>`:''}${r.ys?`<div class="r"><span>Yemeksepeti</span><span>${fmt2.format(r.ys)}</span></div>`:''}<hr>
   ${vat.map(([p,v])=>`<div class="r"><span>Matrah %${p}</span><span>${fmt2.format(v*100/p)}</span></div><div class="r"><span>KDV %${p}</span><span>${fmt2.format(v)}</span></div>`).join('')}<hr>
   <div class="r"><span>İskonto</span><span>${fmt2.format(r.d)}</span></div><div class="r"><span>İkram</span><span>${fmt2.format(r.gift)}</span></div><div class="r"><span>İptal</span><span>${fmt2.format(r.vd)}</span></div><hr>
+  ${SUBELER().map(([id,ad])=>`<div class="r"><span>${esc(ad)}</span><span>${fmt2.format(dayRoll(k,id)?.c||0)}</span></div>`).join('')}
   <div class="r b"><span>GÜN TOPLAMI</span><span>${tl(r.c)}</span></div><hr><div class="c">BİLGİ AMAÇLIDIR, MALİ DEĞERİ YOKTUR</div></div>
   ${!x&&open&&k===bizDay()?`<div class="note">${open} açık adisyon var. Z alındıktan sonra kapanan fişler bir sonraki güne yazılır.</div>`:''}
   ${x?'':`<div class="note">Z alındıktan sonra bu günün fişleri iptal edilemez ve gün yeniden açılamaz.</div>`}
@@ -1171,7 +1195,7 @@ const A={
     clearTimeout(dirty[id]);delete dirty[id];await writing[id];
     const day=bizDay();let left=change;
     const pay=lines.map(l=>{let n=l.a;if(l.m==='cash'&&left>0){const c=Math.min(left,n);n-=c;left-=c}return{...l,net:r2(n)}});
-    const seq=salesOf(day).length+1,sale={id:uid('s'),no:day.slice(2).replace(/-/g,'')+'-'+String(seq).padStart(3,'0'),ts:Date.now(),day,label:orderLabel(o),table:o.table||null,waiter:o.waiter||curW(),guests:t.part?0:o.guests||1,...(o.ysNo?{ysNo:o.ysNo}:{}),
+    const seq=salesOf(day).length+1,sale={id:uid('s'),no:day.slice(2).replace(/-/g,'')+'-'+String(seq).padStart(3,'0'),ts:Date.now(),day,sube:orderSube(o),label:orderLabel(o),table:o.table||null,waiter:o.waiter||curW(),guests:t.part?0:o.guests||1,...(o.ysNo?{ysNo:o.ysNo}:{}),
       items:t.items,sub:t.sub,d:t.d,total:t.total,vat:t.vat,pay,change,cost:r2(t.items.reduce((a,i)=>a+(i.cost||0)*i.qty,0))};
     S.sales[sale.id]=sale;
     if(t.part){
@@ -1198,12 +1222,15 @@ const A={
     if(!n)r.d=dk();else{const d=pd(r.d);if(r.p==='gun')d.setDate(d.getDate()+n);else if(r.p==='ay'){d.setDate(1);d.setMonth(d.getMonth()+n)}else d.setFullYear(d.getFullYear()+n);r.d=dk(d)}
     render();
   },
-  goDay(e){S.rep={p:'gun',d:e.k2};render()},
+  goDay(e){S.rep={...S.rep,p:'gun',d:e.k2};render()},
+  repSube(e){S.rep.sube=e.v;render()},
+  subeSec(e){S.sube=e.v;S.zone=null;try{localStorage.setItem('cini-sube',e.v)}catch{}render()},
   zM(e){S.arm=null;openM({t:'z',x:!!e.x})},
   async zDo(){
     if(S.arm!=='z'){S.arm='z';paintM();return}
     const k=S.rep.d,no=(S.cfg.zNo||0)+1,all=await D.where('sales','day','==',k).catch(()=>salesOf(k));
     const{nm,...r}=rollSales(all);r.closed=Date.now();r.z=no;if(all.length&&all.every(s=>s.demo))r.demo=1;
+    r.sb={};for(const[id]of SUBELER()){const l=all.filter(s=>subeOf(s)===id);if(l.length){const{nm:_,...x}=rollSales(l);r.sb[id]=x}}
     const[y,m,d]=k.split('-'),id=y+'-'+m,doc=S.stats[id]||{days:{},nm:{}};
     const nx={...doc,days:{...doc.days,[d]:r},nm:{...doc.nm,...nm}};
     S.stats[id]=nx;await D.set('stats',id,nx);await saveCfg({zNo:no});
@@ -1304,14 +1331,15 @@ const F={
   },
   async cat(d){const c={id:uid('c'),name:d.n.trim(),order:Object.keys(S.cats).length+1};S.cats[c.id]=c;paintM();await D.set('categories',c.id,c)},
   async table(d){
-    const old=S.modal.tb,t={x:50,y:50,...(old||{}),id:old?.id||uid('t'),name:d.name.trim(),seats:Math.max(1,+d.seats||4),zone:d.zone,shape:d.shape};
-    S.tables[t.id]=t;S.zone=t.zone;S.arm=null;closeM();render();await D.set('tables',t.id,t);
+    const old=S.modal.tb,t={x:50,y:50,...(old||{}),id:old?.id||uid('t'),name:d.name.trim(),seats:Math.max(1,+d.seats||4),zone:d.zone,shape:d.shape,sube:d.sube==='2'?'2':'1'};
+    if(d.renk)t.renk=d.renk;else delete t.renk;
+    S.tables[t.id]=t;S.zone=t.zone;S.sube=t.sube;try{localStorage.setItem('cini-sube',t.sube)}catch{}S.arm=null;closeM();render();await D.set('tables',t.id,t);
   },
   async zone(d){const z={id:uid('z'),name:d.n.trim()};S.zone=z.id;await saveCfg({zones:[...S.cfg.zones,z]});paintM()},
   async biz(d){
     const iban=ibanTemiz(d.iban);
     if(iban&&!ibanGecerli(iban)){toast('IBAN hatalı görünüyor. TR ile başlayan 26 karakteri kontrol edin.',1);return}
-    await saveCfg({name:d.name.trim(),address:d.address.trim(),taxNo:d.taxNo.trim(),footer:d.footer.trim(),iban,ibanAd:d.ibanAd.trim(),banka:d.banka.trim()});toast('İşletme bilgileri kaydedildi')},
+    await saveCfg({name:d.name.trim(),address:d.address.trim(),taxNo:d.taxNo.trim(),footer:d.footer.trim(),iban,ibanAd:d.ibanAd.trim(),banka:d.banka.trim(),subeler:{'1':d.sube1.trim()||'1. Şube','2':d.sube2.trim()||'2. Şube'}});toast('İşletme bilgileri kaydedildi')},
   async staff(d){await saveCfg({staff:[...(S.cfg.staff||[]),d.n.trim()]})},
 };
 document.addEventListener('click',e=>{
