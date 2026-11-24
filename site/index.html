@@ -218,6 +218,13 @@ a.btn{text-decoration:none;color:inherit}a.btn.pri{color:var(--on)}
 .fison{position:sticky;top:0}.fisg .seg{flex-wrap:wrap}.kagit{background:var(--panel2);padding:14px;border-radius:8px;max-height:70vh;max-width:min(520px,100%);overflow:auto;display:flex;justify-content:center}
 .kagit iframe{display:block;border:0;background:#fff;box-shadow:0 0 0 1px #9a9a9a,0 2px 8px rgba(0,0,0,.25);zoom:1.5}
 .secim{display:flex;width:100%}.secim button{flex:1;padding:10px 8px;font-size:16px;display:flex;flex-direction:column;align-items:center;gap:2px}.secim button small{font-size:12.5px;color:var(--mut);font-weight:500}
+.gram{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.gram .inp{width:120px;font:700 22px var(--f-m);text-align:right}.gram span{font-weight:700;color:var(--mut);margin-right:6px}.gram .btn{min-height:46px}
+.mplan{display:grid;grid-template-columns:repeat(var(--kol,3),minmax(0,1fr));grid-auto-rows:78px;gap:6px;padding:8px;width:min(100%,400px);border:2px dashed var(--accent);border-radius:22px;background:var(--panel)}
+.mplan .mh{border-radius:10px;background:var(--panel2);display:flex;min-width:0}
+.mplan .mh.hedef{outline:3px solid var(--accent);outline-offset:-3px}
+.mplan .mt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--fg);cursor:grab;touch-action:none;padding:2px}
+.mplan .mt.renkli{border:3px solid var(--tr)}.mplan .mt.sec{outline:3px solid var(--accent);outline-offset:1px}
+.mplan .mt b{font:700 20px var(--f-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.mplan .mt small{color:var(--mut);font-size:12px}
 .malz{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}.malz .btn{min-height:52px;font:600 18px var(--f-d)}
 .malz .btn.cik{background:var(--accent);border-color:var(--accent);color:var(--on);text-decoration:line-through;text-decoration-thickness:1px}
 .imgf{display:flex;gap:12px;align-items:center}
@@ -312,7 +319,8 @@ details summary{cursor:pointer;color:var(--mut);font-weight:600;margin-top:8px}
   input,select,textarea,.inp{font-size:16px}
   html,body{height:100dvh;overflow:hidden}body{position:fixed;inset:0;width:100%}
   .fl-main{padding:8px 12px;gap:7px;overflow:hidden}.fl-head{gap:6px 10px;flex-wrap:nowrap}.legend{flex:1;min-width:0;gap:3px 8px;font-size:12.5px}.fl-head .sp{display:none}.fl-head .btn{min-height:38px;padding:6px 9px;font-size:14px;flex:none}
-  .floor{flex:1;min-height:0;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(74px,1fr);gap:6px;padding:6px;overflow:auto}
+  .floor{flex:1;min-height:0;grid-template-columns:repeat(var(--kol,3),minmax(0,1fr));grid-auto-rows:minmax(74px,1fr);gap:6px;padding:6px;overflow:auto}
+  .floor:not(.edit) .tb{grid-column:var(--mc,auto);grid-row:var(--mr,auto)}
   .tb,.tb.rect{aspect-ratio:auto;height:auto;border-radius:10px}.tb.round{border-radius:10px}.tb .n{font-size:20px}.tb .s{font-size:12px}.tb .a{font-size:13px}
   .tk{padding:8px 12px}.vfd{padding:6px 10px}.vfd .l1{font-size:14px;min-height:0}.vfd .l2{font-size:23px}.vfd .l2 small{font-size:13px}.roll{margin-top:6px}.sums{padding:5px 11px 11px}
   .ops{gap:4px;padding-top:6px}.ops .btn{min-height:36px;padding:3px 2px;font-size:13px}.ops .pay{min-height:46px;font-size:20px}.ops .prt{min-height:36px}
@@ -440,8 +448,8 @@ function rollSales(list){
     for(const i of s.items||[]){
       const r=i.gift?0:i.price*i.qty*k;
       if(i.gift)o.gift+=i.price*i.qty;
-      const key=i.por===1.5?i.pid+'~15':i.por==='az'?i.pid+'~az':i.pid,e=o.it[key]=o.it[key]||[0,0];e[0]+=i.qty;e[1]=r2(e[1]+r);
-      o.nm[key]=[i.name,i.catName||''];
+      const key=i.por===1.5?i.pid+'~15':i.por==='az'?i.pid+'~az':i.por==='kg'?i.pid+'~kg':i.pid,e=o.it[key]=o.it[key]||[0,0];e[0]+=i.qty;e[1]=r2(e[1]+r);
+      o.nm[key]=[i.por==='kg'?i.name.replace(/\s*\([^)]*\)$/,'')+' (kilo)':i.name,i.catName||''];
     }
   }
   ['c','d','cash','card','iban','meal','ys','cost','gift','vd'].forEach(f=>o[f]=r2(o[f]));
@@ -450,24 +458,30 @@ function rollSales(list){
 /* Porsiyon ve çıkarılan malzeme seçimi. Kategoride liste yoksa adı "dürüm" geçen kategoriye varsayılan liste gelir. */
 const siz=w=>{const v=(String(w).toLocaleLowerCase('tr').match(/[aıoueiöü]/g)||['a']).pop();return w+{a:'sız',ı:'sız',e:'siz',i:'siz',o:'suz',u:'suz',ö:'süz',ü:'süz'}[v]};
 const cikarListe=p=>{const c=S.cats[p?.cat],l=c?.cikar??(/dürüm/i.test(c?.name||'')?'Soğan, Domates, Maydanoz':'');return String(l).split(',').map(x=>x.trim()).filter(Boolean)};
-/* 1,5 porsiyonun adı: elle yazılmadıysa addaki gramaj 1,5 katına çıkar, gramaj yoksa "(1,5 porsiyon)" eklenir. */
+/* Ekstralar fiyat farkıyla eklenir; kategoride "Ad +fiyat" olarak virgülle yazılır. Dürüm kategorisinde varsayılan Çift Lavaş +20. */
+const ekstraListe=p=>{const c=S.cats[p?.cat];return ekstraCoz(c?.ekstra??(/dürüm/i.test(c?.name||'')?'Çift Lavaş +20':''))};
+const ekstraCoz=l=>String(l).split(/,(?=\s*[^\d\s])/).map(x=>{const m=x.trim().match(/^(.*?)\s*\+?\s*(\d+(?:[.,]\d+)?)\s*(?:tl|₺)?$/i);return m&&m[1].trim()?[m[1].trim(),parseFloat(m[2].replace(',','.'))]:null}).filter(Boolean);
+const ekstraYazi=l=>l.map(([a,f])=>a+' +'+String(f).replace('.',',')).join(', ');
+const ekstraFark=(p,adlar)=>ekstraListe(p).filter(([a])=>adlar.includes(a)).reduce((t,[,f])=>t+f,0);
+const gramYazi=g=>g>=1000?new Intl.NumberFormat('tr-TR',{maximumFractionDigits:3}).format(g/1000)+' kg':g+' gr';
+/* 1,5 porsiyonun adı: elle yazılmadıysa addaki gramaj kaldırılır ve "(1,5 porsiyon)" yazılır. */
 const ad15=p=>{
   if(p.name15)return p.name15;
-  const kat=x=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:2}).format(parseFloat(x.replace(',','.'))*1.5);
-  const g=p.name.replace(/(\d+(?:[.,]\d+)?)\s*(gr|g|gram|kg)\b/i,(_,n,b)=>kat(n)+' '+b);
-  return g!==p.name?g:p.name+' (1,5 porsiyon)';
+  const yalin=p.name.replace(/\s*\(\s*\d+(?:[.,]\d+)?\s*(?:gr|g|gram|kg)\s*\)/i,'').replace(/\s+\d+(?:[.,]\d+)?\s*(?:gr|g|gram|kg)\b/i,'').trim();
+  return(yalin||p.name)+' (1,5 porsiyon)';
 };
 /* Ürüne özel sorular: her satır bir soru, seçenekler "/" ile ayrılır (ör. "Acılı / Acısız"). */
 const secimListe=p=>String(p?.secimler||'').split('\n').map(l=>l.split('/').map(x=>x.trim()).filter(Boolean)).filter(g=>g.length>=2);
-const secenekli=p=>p.price15>0||p.priceAz>0||cikarListe(p).length>0||secimListe(p).length>0;
-const satirNotu=i=>[...(i.sec||[]),cikarYazi(i)].filter(Boolean).join(', ');
+const secenekli=p=>p.price15>0||p.priceAz>0||p.priceKg>0||cikarListe(p).length>0||secimListe(p).length>0||ekstraListe(p).length>0;
+const satirNotu=i=>[...(i.ekstra||[]),...(i.sec||[]),cikarYazi(i)].filter(Boolean).join(', ');
 /* Porsiyon seçenekleri: az (fiyatı girildiyse), tam ve 1,5 (fiyatı girildiyse). */
-const porsiyonlar=p=>[...(p.priceAz>0?[['az','Az porsiyon',p.priceAz,p.name+' (az)']]:[]),[1,p.priceAz>0?'Tam porsiyon':'1 porsiyon',p.price,p.name],...(p.price15>0?[[1.5,'1,5 porsiyon',p.price15,ad15(p)]]:[])];
+const porsiyonlar=p=>[...(p.priceAz>0?[['az','Az porsiyon',p.priceAz,p.name+' (az)']]:[]),[1,p.priceAz>0?'Tam porsiyon':'1 porsiyon',p.price,p.name],...(p.price15>0?[[1.5,'1,5 porsiyon',p.price15,ad15(p)]]:[]),...(p.priceKg>0?[['kg','Kilo ile',p.priceKg,'Kilosu '+tl(p.priceKg)]]:[])];
 const cikarYazi=i=>(i.cikar||[]).map(x=>siz(x.toLocaleLowerCase('tr')).replace(/^./,c=>c.toLocaleUpperCase('tr'))).join(', ');
-function satirEkle(p,por,cikar,q,sec=[]){
-  const o=ensureOrder(),secim=porsiyonlar(p).find(x=>x[0]===por)||porsiyonlar(p).find(x=>x[0]===1),fiyat=secim[2],ad=secim[3],anahtar=cikar.join(',');
-  const l=o.items.find(i=>i.pid===p.id&&!i.sent&&!i.gift&&!i.note&&(i.por||1)===por&&(i.cikar||[]).join(',')===anahtar&&(i.sec||[]).join(',')===sec.join(','));
-  if(l)l.qty+=q;else o.items.push({pid:p.id,name:ad,price:fiyat,cost:r2((p.cost||0)*(p.price?fiyat/p.price:1)),vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por!==1?{por}:{}),...(cikar.length?{cikar}:{}),...(sec.length?{sec}:{})});
+function satirEkle(p,por,cikar,q,sec=[],ekstra=[],gr=0){
+  const kg=por==='kg'&&p.priceKg>0&&gr>0;if(por==='kg'&&!kg)por=1;
+  const secim=porsiyonlar(p).find(x=>x[0]===por)||porsiyonlar(p).find(x=>x[0]===1),taban=kg?r2(p.priceKg*gr/1000):secim[2],fiyat=r2(taban+ekstraFark(p,ekstra)),ad=kg?`${p.name} (${gramYazi(gr)})`:secim[3],anahtar=cikar.join(',');
+  const o=ensureOrder(),l=o.items.find(i=>i.pid===p.id&&!i.sent&&!i.gift&&!i.note&&(i.por||1)===por&&(i.gr||0)===(kg?gr:0)&&(i.cikar||[]).join(',')===anahtar&&(i.sec||[]).join(',')===sec.join(',')&&(i.ekstra||[]).join(',')===ekstra.join(','));
+  if(l)l.qty+=q;else o.items.push({pid:p.id,name:ad,price:fiyat,cost:r2((p.cost||0)*(p.price?taban/p.price:1)),vat:p.vat,cat:p.cat,catName:S.cats[p.cat]?.name||'',qty:q,...(por!==1?{por}:{}),...(kg?{gr}:{}),...(cikar.length?{cikar}:{}),...(sec.length?{sec}:{}),...(ekstra.length?{ekstra}:{})});
   S.last=`${q}x ${ad} ${fmt2.format(fiyat*q)}`;S.mult=1;S.scrollLn=true;touch(o.id);
 }
 /* İki şube: masa, paket ve fiş şubeye bağlıdır. Şubesi yazılmamış eski kayıtlar 1. şubedir. */
@@ -586,11 +600,37 @@ function floorHtml(edit){
   const zone=S.zone||S.cfg.zones?.[0]?.id;
   const ts=Object.values(S.tables).filter(t=>t.zone===zone).sort((a,b)=>a.name.localeCompare(b.name,'tr',{numeric:true}));
   if(!ts.length)return`<div class="floor"><div class="empty"><b>Bu bölümde masa yok</b>${edit?'':'Yönetim ekranından ilk masayı ekleyin.'}${edit?'':'<br><button class="btn pri" data-a="nav" data-v="yonetim">Masa Ekle</button>'}</div></div>`;
-  return`<div class="floor${edit?' edit':''}" id="floor">${ts.map(t=>{
+  const yer=mobilYer(ts),kol=mobKol();
+  return`<div class="floor${edit?' edit':''}" id="floor" style="--kol:${kol}">${ts.map(t=>{
     const o=S.orders[t.id],st=tStatus(o),tt=totals(o),n=t.seats||4;
     const stL={bos:`${n} kişilik`,dolu:durLabel(mins(o||{opened:Date.now()})),hesap:'Hesap istendi',gec:durLabel(mins(o||{opened:Date.now()}))}[st];
     const ch=Array.from({length:n},(_,i)=>{const a=i/n*Math.PI*2+Math.PI/n,s=Math.sin(a),c=Math.cos(a),k=t.shape==='round'?1:1/Math.max(Math.abs(s),Math.abs(c));return`<i class="ch" style="left:${50+57*k*s}%;top:${50-57*k*c}%"></i>`}).join('');
-    return`<button class="tb ${t.shape||'square'} st-${st}${t.renk?' renkli':''}" style="left:${t.x}%;top:${t.y}%${t.renk?`;--tr:${esc(t.renk)}`:''}" data-${edit?'t':'a="open" data-id'}="${t.id}" ${edit?`data-drag="${t.id}"`:''} aria-label="${esc(t.name)}, ${st==='bos'?'boş':stL}">${ch}<span class="n">${esc(t.name)}</span><span class="s">${esc(stL)}</span>${st==='bos'?'':`<span class="a num">${tl0(tt.total)}</span>`}</button>`}).join('')}</div>`;
+    return`<button class="tb ${t.shape||'square'} st-${st}${t.renk?' renkli':''}" style="left:${t.x}%;top:${t.y}%;--mc:${yer[t.id]%kol+1};--mr:${Math.floor(yer[t.id]/kol)+1}${t.renk?`;--tr:${esc(t.renk)}`:''}" data-${edit?'t':'a="open" data-id'}="${t.id}" ${edit?`data-drag="${t.id}"`:''} aria-label="${esc(t.name)}, ${st==='bos'?'boş':stL}">${ch}<span class="n">${esc(t.name)}</span><span class="s">${esc(stL)}</span>${st==='bos'?'':`<span class="a num">${tl0(tt.total)}</span>`}</button>`}).join('')}</div>`;
+}
+/* Telefon planı: masalar kol sütunlu ızgarada hücre numarasıyla (mi) durur; numarası olmayanlar boş hücrelere ad sırasıyla yerleşir. */
+const mobKol=()=>Math.min(5,Math.max(2,+S.cfg.mobKol||3));
+function mobilYer(ts){
+  const yer={},dolu=new Set();let i=0;
+  for(const t of ts)if(Number.isInteger(t.mi)&&t.mi>=0&&!dolu.has(t.mi)){yer[t.id]=t.mi;dolu.add(t.mi)}
+  for(const t of ts)if(yer[t.id]==null){while(dolu.has(i))i++;yer[t.id]=i;dolu.add(i)}
+  return yer;
+}
+const zoneMasalar=()=>{const z=S.zone||S.cfg.zones?.[0]?.id;return Object.values(S.tables).filter(t=>t.zone===z).sort((a,b)=>a.name.localeCompare(b.name,'tr',{numeric:true}))};
+function mobilPlanHtml(){
+  const ts=zoneMasalar(),yer=mobilYer(ts),kol=mobKol(),byI={};
+  for(const t of ts)byI[yer[t.id]]=t;
+  const son=Math.max(-1,...Object.values(yer)),n=(Math.ceil((son+1)/kol)+1)*kol;
+  return`<div class="mplan" id="mplan" style="--kol:${kol}">${Array.from({length:n},(_,i)=>{const t=byI[i];
+    return`<div class="mh" data-hucre="${i}">${t?`<button class="mt${t.renk?' renkli':''}${S.mobSec===t.id?' sec':''}" style="${t.renk?`--tr:${esc(t.renk)}`:''}" data-mdrag="${t.id}" aria-label="${esc(t.name)}, ${i+1}. kare"><b>${esc(t.name)}</b><small>${esc(subeAd(subeOf(t)))}</small></button>`:''}</div>`}).join('')}</div>`;
+}
+/* Masayı telefon planında bir kareye taşır; karede masa varsa ikisi yer değiştirir. O bölümdeki tüm masaların yeri kaydedilir. */
+async function mobilTasi(id,hedef){
+  const ts=zoneMasalar(),yer=mobilYer(ts),eski=yer[id];if(eski==null||eski===hedef)return;
+  const diger=ts.find(t=>yer[t.id]===hedef);if(diger)yer[diger.id]=eski;yer[id]=hedef;
+  const degisen=ts.filter(t=>t.mi!==yer[t.id]).map(t=>({...t,mi:yer[t.id]}));
+  for(const t of degisen)S.tables[t.id]=t;
+  S.mobSec=null;render();
+  for(const t of degisen)await D.set('tables',t.id,t);
 }
 function zoneTabs(){if((S.cfg.zones||[]).length<2)return'';return`<div class="seg" role="tablist">${(S.cfg.zones||[]).map(z=>{
   const n=Object.values(S.tables).filter(t=>t.zone===z.id&&tStatus(S.orders[t.id])!=='bos').length;
@@ -805,9 +845,12 @@ function vYonetim(){
   const t=S.adm.tab,c=S.cfg;
   const tabs=[['masa','Masa düzeni'],['isl','İşletme'],['fis','Fiş'],['ag','Giriş ve Ağ'],['per','Personel'],['veri','Veri']];
   let b='';
-  if(t==='masa')b=`<div class="ad-h">${zoneTabs()}<div class="sp"></div><button class="btn" data-a="zoneM">Bölümler</button><button class="btn pri" data-a="tableM">Masa Ekle</button></div>
-    <div class="note" style="margin-bottom:10px">Masaları sürükleyerek yerleştirin. Bir masaya dokununca adı, kişi sayısı ve şekli değişir.</div>
-    <div style="display:flex;min-height:620px">${floorHtml(true)}</div>`;
+  const plan=S.planMod||(innerWidth<=760?'tel':'pc');
+  if(t==='masa')b=`<div class="ad-h"><div class="seg" role="tablist" aria-label="Plan"><button data-a="planMod" data-v="pc" class="${plan==='pc'?'on':''}">Bilgisayar planı</button><button data-a="planMod" data-v="tel" class="${plan==='tel'?'on':''}">Telefon planı</button></div>${zoneTabs()}<div class="sp"></div><button class="btn" data-a="zoneM">Bölümler</button><button class="btn pri" data-a="tableM">Masa Ekle</button></div>
+    ${plan==='pc'?`<div class="note" style="margin-bottom:10px">Bilgisayar ve tablette görünen plan. Masaları sürükleyerek yerleştirin. Bir masaya dokununca adı, kişi sayısı ve şekli değişir.</div>
+    <div style="display:flex;min-height:620px">${floorHtml(true)}</div>`:`<div class="note" style="margin-bottom:10px">Telefonda görünen plan, bilgisayar planından ayrıdır. Masayı sürükleyip boş kareye bırakın; başka masanın üstüne bırakırsanız yer değiştirirler. Sürüklemek yerine önce masaya, sonra kareye de dokunabilirsiniz. Masaya iki kez dokununca ayarları açılır.</div>
+    <div class="ad-h"><label class="field" style="flex-direction:row;align-items:center;gap:8px">Sütun sayısı<select id="mob-kol" data-c="mobKol">${[2,3,4,5].map(n=>`<option value="${n}"${mobKol()===n?' selected':''}>${n}</option>`).join('')}</select></label></div>
+    ${zoneMasalar().length?mobilPlanHtml():'<div class="empty"><b>Bu bölümde masa yok</b></div>'}`}`;
   if(t==='isl')b=`<div class="pnl" style="max-width:640px"><form class="fg" data-f="biz">
     <label class="field full">İşletme adı<input id="c-name" name="name" value="${esc(c.name)}" required></label>
     <label class="field full">Adres<input id="c-address" name="address" value="${esc(c.address)}"></label>
@@ -1006,16 +1049,22 @@ function mPaketSube(){
   return`<div class="md-h"><h2>Paket / Gel-Al</h2>${close}</div><p style="margin:0;color:var(--mut)">Paket hangi şubeden çıkıyor?</p>
   <div class="secim" style="gap:8px">${SUBELER().map(([id,ad])=>`<button class="btn${aktifSube()===id?' pri':''}" style="min-height:60px;font:700 20px var(--f-d)" data-a="paketAc" data-v="${id}">${esc(ad)}</button>`).join('')}</div>`;
 }
+function urunFiyat(m){
+  const p=S.prods[m.pid],pl=porsiyonlar(p),taban=m.por==='kg'?r2(p.priceKg*(+m.gr||0)/1000):(pl.find(x=>x[0]===m.por)||pl.find(x=>x[0]===1))[2];
+  return r2(taban+ekstraFark(p,m.ek||[]));
+}
 function mUrun(m){
   const p=S.prods[m.pid];if(!p)return'';
-  const l=cikarListe(p),pl=porsiyonlar(p),fiyat=(pl.find(x=>x[0]===m.por)||pl.find(x=>x[0]===1))[2];
+  const l=cikarListe(p),pl=porsiyonlar(p),el=ekstraListe(p),fiyat=urunFiyat(m);
   return`<div class="md-h"><h2>${esc(p.name)}</h2>${close}</div>
-  ${pl.length>1?`<div><div class="lab" style="margin-bottom:5px">Porsiyon</div><div class="seg secim">${pl.map(([n,a,f,ad])=>`<button data-a="urunPor" data-n="${n}" class="${m.por===n?'on':''}">${a} · ${tl(f)}<small>${esc(ad)}</small></button>`).join('')}</div></div>`:''}
+  ${pl.length>1?`<div><div class="lab" style="margin-bottom:5px">Porsiyon</div><div class="seg secim">${pl.map(([n,a,f,ad])=>`<button data-a="urunPor" data-n="${n}" class="${m.por===n?'on':''}">${a}${n==='kg'?'':' · '+tl(f)}<small>${esc(ad)}</small></button>`).join('')}</div></div>`:''}
+  ${m.por==='kg'?`<div><div class="lab" style="margin-bottom:5px">Gramaj (kilosu ${tl(p.priceKg)})</div><div class="gram"><input class="inp num" id="u-gr" data-i="gr" inputmode="numeric" value="${m.gr||''}" placeholder="Gram" aria-label="Gramaj (gram)"><span>gr</span>${[250,500,750,1000].map(g=>`<button class="btn${+m.gr===g?' pri':''}" data-a="urunGr" data-n="${g}">${gramYazi(g)}</button>`).join('')}</div></div>`:''}
+  ${el.length?`<div><div class="lab" style="margin-bottom:5px">Ekstra</div><div class="malz">${el.map(([a,f])=>{const on=m.ek.includes(a);return`<button class="btn${on?' pri':''}" data-a="urunEk" data-v="${esc(a)}" aria-pressed="${on}">${esc(a)} +${tl0(f)}</button>`}).join('')}</div></div>`:''}
   ${secimListe(p).map((g,gi)=>`<div><div class="lab" style="margin-bottom:5px">${esc(g.join(' / '))}</div><div class="seg secim">${g.map(x=>`<button data-a="urunSec" data-n="${gi}" data-v="${esc(x)}" class="${m.sec[gi]===x?'on':''}" aria-pressed="${m.sec[gi]===x}">${esc(x)}</button>`).join('')}</div></div>`).join('')}
   ${l.length?`<div><div class="lab" style="margin-bottom:5px">İçindekiler</div><div class="malz">${l.map(x=>{const c=m.cikar.includes(x);return`<button class="btn${c?' cik':''}" data-a="urunCikar" data-v="${esc(x)}" aria-pressed="${c}">${c?esc(cikarYazi({cikar:[x]})):esc(x)}</button>`}).join('')}</div>
     <p style="margin:6px 0 0;color:var(--mut);font-size:14px">${m.cikar.length?'Fişte yazar: <b>'+esc(cikarYazi({cikar:l.filter(x=>m.cikar.includes(x))}))+'</b>':'Hiçbirine basmazsanız karışık olur. Çıkarılacak malzemeye dokunun.'}</p></div>`:''}
   <div class="acts"><div class="mult l"><button data-a="urunAdet" data-n="-1" aria-label="Azalt">−</button><button class="on" disabled>${m.q}</button><button data-a="urunAdet" data-n="1" aria-label="Artır">+</button></div>
-  <button class="btn pri" style="min-height:52px;flex:1;font:700 20px var(--f-d)" data-a="urunEkle">Ekle · ${tl(fiyat*m.q)}</button></div>`;
+  <button class="btn pri" id="u-ekle" style="min-height:52px;flex:1;font:700 20px var(--f-d)" data-a="urunEkle" ${m.por==='kg'&&!(m.gr>0)?'disabled':''}>Ekle · ${tl(fiyat*m.q)}</button></div>`;
 }
 function mProd(m){
   const p=m.p||{},cats=Object.values(S.cats).sort((a,b)=>(a.order||0)-(b.order||0));
@@ -1028,6 +1077,7 @@ function mProd(m){
   <label class="field">Satış fiyatı (₺, KDV dahil)<input id="p-p" name="price" inputmode="decimal" value="${numIn(p.price)}" required></label>
   <label class="field">Az porsiyon fiyatı (₺, boşsa yok)<input id="p-paz" name="priceAz" inputmode="decimal" value="${p.priceAz>0?numIn(p.priceAz):''}" placeholder="Yok"></label>
   <label class="field">1,5 porsiyon fiyatı (₺, boşsa yok)<input id="p-p15" name="price15" inputmode="decimal" value="${p.price15>0?numIn(p.price15):''}" placeholder="Yok"></label>
+  <label class="field">Kilo fiyatı (₺/kg, boşsa yok)<input id="p-pkg" name="priceKg" inputmode="decimal" value="${p.priceKg>0?numIn(p.priceKg):''}" placeholder="Yok"></label>
   <label class="field full">Siparişte sorulacaklar (her satıra bir soru, seçenekleri / ile ayırın)<textarea id="p-sec" name="secimler" rows="3" placeholder="Acılı / Acısız&#10;Soğanlı / Soğansız">${esc(p.secimler||'')}</textarea><span style="font-weight:500">Örnek: <button type="button" class="btn sm" data-a="secOrnek" data-v="Acılı / Acısız">Acılı / Acısız</button> <button type="button" class="btn sm" data-a="secOrnek" data-v="Soğanlı / Soğansız">Soğanlı / Soğansız</button></span></label>
   <label class="field full">1,5 porsiyon adı (boşsa otomatik)<input id="p-n15" name="name15" value="${esc(p.name15||'')}" placeholder="${esc(p.name?ad15({name:p.name}):'Örn. Adana Dürüm (180 gr)')}"></label>
   <label class="field">Maliyet (₺, 1 porsiyon)<input id="p-o" name="cost" inputmode="decimal" value="${numIn(p.cost)}"></label>
@@ -1038,8 +1088,8 @@ function mProd(m){
 function mCats(){
   const cats=Object.values(S.cats).sort((a,b)=>(a.order||0)-(b.order||0));
   return`<div class="md-h"><h2>Kategoriler</h2>${close}</div>
-  <div class="rows">${cats.map(c=>{const n=Object.values(S.prods).filter(p=>p.cat===c.id).length;const ck=c.cikar??(/dürüm/i.test(c.name)?'Soğan, Domates, Maydanoz':'');return`<div style="flex-wrap:wrap"><input class="inp" id="ct-${c.id}" data-c="catName" data-id="${c.id}" value="${esc(c.name)}" aria-label="Kategori adı"><input class="inp" id="cc-${c.id}" data-c="catCikar" data-id="${c.id}" value="${esc(ck)}" placeholder="Çıkarılabilir malzeme yok" aria-label="${esc(c.name)} için çıkarılabilir malzemeler" style="flex:1 1 100%"><span class="m" style="white-space:nowrap;align-self:center">${n} ürün</span><button class="btn sm dan" data-a="delCat" data-id="${c.id}" ${n?'disabled':''}>Sil</button></div>`}).join('')}</div>
-  <p style="margin:0;color:var(--mut);font-size:14px">İkinci kutu, siparişte çıkarılabilecek malzemelerdir (virgülle ayırın, ör. Soğan, Domates, Maydanoz). Boş bırakılırsa seçim penceresi çıkmaz.</p>
+  <div class="rows">${cats.map(c=>{const n=Object.values(S.prods).filter(p=>p.cat===c.id).length;const ck=c.cikar??(/dürüm/i.test(c.name)?'Soğan, Domates, Maydanoz':''),ek=c.ekstra??(/dürüm/i.test(c.name)?'Çift Lavaş +20':'');return`<div style="flex-wrap:wrap"><input class="inp" id="ct-${c.id}" data-c="catName" data-id="${c.id}" value="${esc(c.name)}" aria-label="Kategori adı"><input class="inp" id="cc-${c.id}" data-c="catCikar" data-id="${c.id}" value="${esc(ck)}" placeholder="Çıkarılabilir malzeme yok" aria-label="${esc(c.name)} için çıkarılabilir malzemeler" style="flex:1 1 100%"><input class="inp" id="ce-${c.id}" data-c="catEkstra" data-id="${c.id}" value="${esc(ek)}" placeholder="Ekstra yok (ör. Çift Lavaş +20)" aria-label="${esc(c.name)} için ekstralar ve fiyat farkları" style="flex:1 1 100%"><span class="m" style="white-space:nowrap;align-self:center">${n} ürün</span><button class="btn sm dan" data-a="delCat" data-id="${c.id}" ${n?'disabled':''}>Sil</button></div>`}).join('')}</div>
+  <p style="margin:0;color:var(--mut);font-size:14px">İkinci kutu, siparişte çıkarılabilecek malzemelerdir (virgülle ayırın, ör. Soğan, Domates, Maydanoz). Üçüncü kutu, fiyat farkıyla eklenen ekstralardır (ör. Çift Lavaş +20, Kaşar +15). Boş bırakılan kutu siparişte sorulmaz.</p>
   <form data-f="cat" class="fg" style="grid-template-columns:minmax(0,1fr) auto"><input class="inp" id="newCat" name="n" placeholder="Yeni kategori" aria-label="Yeni kategori" required><button class="btn pri">Ekle</button></form>`;
 }
 function zamList(m){
@@ -1132,15 +1182,17 @@ const A={
   mult(e){S.mult=+e.n;render()},
   add(e){
     const p=S.prods[e.id];if(!p)return;
-    if(secenekli(p)){openM({t:'urun',pid:p.id,por:1,cikar:[],sec:{},q:S.mult});return}
+    if(secenekli(p)){openM({t:'urun',pid:p.id,por:1,cikar:[],sec:{},ek:[],gr:'',q:S.mult});return}
     satirEkle(p,1,[],S.mult);
   },
-  urunPor(e){S.modal.por=e.n==='az'?'az':+e.n;paintM()},
+  urunPor(e){S.modal.por=e.n==='az'||e.n==='kg'?e.n:+e.n;paintM();if(e.n==='kg'&&!S.modal.gr)$('#u-gr')?.focus()},
+  urunGr(e){S.modal.gr=+e.n;paintM()},
+  urunEk(e){const m=S.modal;m.ek=m.ek.includes(e.v)?m.ek.filter(x=>x!==e.v):[...m.ek,e.v];paintM()},
   urunCikar(e){const m=S.modal,x=e.v;m.cikar=m.cikar.includes(x)?m.cikar.filter(y=>y!==x):[...m.cikar,x];paintM()},
   secOrnek(e){const t=$('#p-sec');if(!t)return;const l=t.value.split('\n').map(x=>x.trim()).filter(Boolean);if(!l.includes(e.v))l.push(e.v);t.value=l.join('\n')},
   urunSec(e){const m=S.modal,g=+e.n;m.sec[g]=m.sec[g]===e.v?undefined:e.v;paintM()},
   urunAdet(e){S.modal.q=Math.max(1,S.modal.q+ +e.n);paintM()},
-  urunEkle(){const m=S.modal,p=S.prods[m.pid];if(!p)return closeM();const sira=cikarListe(p),sec=secimListe(p).map((_,g)=>m.sec[g]).filter(Boolean);satirEkle(p,m.por,sira.filter(x=>m.cikar.includes(x)),m.q,sec);closeM()},
+  urunEkle(){const m=S.modal,p=S.prods[m.pid];if(!p)return closeM();const sira=cikarListe(p),sec=secimListe(p).map((_,g)=>m.sec[g]).filter(Boolean);const ek=ekstraListe(p).map(x=>x[0]).filter(x=>m.ek.includes(x));if(m.por==='kg'&&!(+m.gr>0)){toast('Gramajı girin.',1);return}satirEkle(p,m.por,sira.filter(x=>m.cikar.includes(x)),m.q,sec,ek,Math.round(+m.gr||0));closeM()},
   sel(e){S.sel=S.sel===+e.n?null:+e.n;render()},
   qty(e){const o=S.orders[S.order],i=o.items[S.sel];i.qty+=+e.n;if(i.qty<=0){o.items.splice(S.sel,1);S.sel=null}touch(o.id)},
   rm(){const o=S.orders[S.order];o.items.splice(S.sel,1);S.sel=null;touch(o.id)},
@@ -1226,6 +1278,7 @@ const A={
   },
   goDay(e){S.rep={...S.rep,p:'gun',d:e.k2};render()},
   repSube(e){S.rep.sube=e.v;render()},
+  planMod(e){S.planMod=e.v;S.mobSec=null;render()},
   zM(e){S.arm=null;openM({t:'z',x:!!e.x})},
   async zDo(){
     if(S.arm!=='z'){S.arm='z';paintM();return}
@@ -1325,6 +1378,7 @@ const F={
     const n15=String(d.name15||'').trim();if(n15)p.name15=n15;else delete p.name15;
     const sm=secimListe({secimler:d.secimler}).map(g=>g.join(' / ')).join('\n');if(sm)p.secimler=sm;else delete p.secimler;
     const paz=String(d.priceAz||'').trim()?parseNum(d.priceAz):0;if(paz>0)p.priceAz=paz;else delete p.priceAz;
+    const pkg=String(d.priceKg||'').trim()?parseNum(d.priceKg):0;if(pkg>0)p.priceKg=pkg;else delete p.priceKg;
     if(p.priceAz>=p.price){toast('Az porsiyon fiyatı tam porsiyondan düşük olmalı.',1);return}
     if(!(p.price>0)){toast('Geçerli bir fiyat girin.',1);return}
     if(!p.cat){toast('Önce bir kategori ekleyin.',1);return}
@@ -1354,7 +1408,7 @@ document.addEventListener('submit',e=>{
   Promise.resolve().then(()=>F[f](Object.fromEntries(new FormData(e.target)))).catch(er=>{if(!er?.code)toast('Kaydedilemedi. Tekrar deneyin.',1);console.error(er)});
 });
 document.addEventListener('input',e=>{
-  const k=e.target.dataset.i;if(k==='q'){S.q=e.target.value;render()}else if(k==='aq'){S.adm.q=e.target.value;render()}
+  const k=e.target.dataset.i;if(k==='gr'&&S.modal?.t==='urun'){const g=Math.max(0,Math.round(parseNum(e.target.value)||0)),b=$('#u-ekle');S.modal.gr=g||'';if(b){b.disabled=!(g>0);b.textContent='Ekle · '+tl(urunFiyat(S.modal)*S.modal.q)}return}if(k==='q'){S.q=e.target.value;render()}else if(k==='aq'){S.adm.q=e.target.value;render()}
 });
 document.addEventListener('change',e=>{
   if(e.target.dataset.c==='restore'){const f=e.target.files[0];e.target.value='';if(f)geriYukle(f);return}
@@ -1368,6 +1422,8 @@ document.addEventListener('change',e=>{
   if(k==='acat'){S.adm.cat=t.value;render()}
   if(k==='price'){const v=parseNum(t.value),p=S.prods[t.dataset.id];if(v>0&&p&&v!==p.price){const n={...p,price:v};S.prods[p.id]=n;D.set('products',p.id,n).then(()=>toast(`${p.name}: ${tl(v)}`)).catch(()=>{})}else if(p)t.value=numIn(p.price)}
   if(k==='catCikar'){const c={...S.cats[t.dataset.id],cikar:t.value.split(',').map(x=>x.trim()).filter(Boolean).join(', ')};S.cats[c.id]=c;D.set('categories',c.id,c).then(()=>toast(`${c.name}: malzemeler kaydedildi`)).catch(()=>{})}
+  if(k==='catEkstra'){const c={...S.cats[t.dataset.id],ekstra:ekstraYazi(ekstraCoz(t.value))};S.cats[c.id]=c;t.value=c.ekstra;D.set('categories',c.id,c).then(()=>toast(`${c.name}: ekstralar kaydedildi`)).catch(()=>{})}
+  if(k==='mobKol'){saveCfg({mobKol:+t.value}).then(render).catch(()=>{})}
   if(k==='catName'){const c={...S.cats[t.dataset.id],name:t.value.trim()};if(c.name){S.cats[c.id]=c;D.set('categories',c.id,c).catch(()=>{})}}
   if(k==='zamF'){S.modal[t.dataset.f2]=t.value;paintM()}
   if(k==='prodImg'&&t.files[0])uploadImg(t.files[0]);
@@ -1378,6 +1434,31 @@ document.addEventListener('focusout',()=>{if(pendingR){pendingR=false;setTimeout
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&S.modal){S.arm=null;closeM()}
   if(e.key==='/'&&S.view==='adisyon'&&!e.target.matches('input,textarea')){e.preventDefault();$('#q')?.focus()}
+});
+/* telefon planı: sürükle bırak veya dokun-seç-dokun */
+let mdrag=null;
+document.addEventListener('pointerdown',e=>{
+  const el=e.target.closest('[data-mdrag]');if(!el)return;
+  mdrag={el,id:el.dataset.mdrag,x0:e.clientX,y0:e.clientY,mv:false};el.setPointerCapture(e.pointerId);
+});
+document.addEventListener('pointermove',e=>{
+  if(!mdrag)return;
+  if(!mdrag.mv&&Math.abs(e.clientX-mdrag.x0)+Math.abs(e.clientY-mdrag.y0)>6){mdrag.mv=true;mdrag.el.style.pointerEvents='none';mdrag.el.style.zIndex=5;mdrag.el.style.position='relative'}
+  if(!mdrag.mv)return;
+  mdrag.el.style.transform=`translate(${e.clientX-mdrag.x0}px,${e.clientY-mdrag.y0}px)`;
+  document.querySelectorAll('.mh.hedef').forEach(h=>h.classList.remove('hedef'));
+  document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-hucre]')?.classList.add('hedef');
+});
+document.addEventListener('pointerup',e=>{
+  if(!mdrag)return;const d=mdrag;mdrag=null;
+  if(d.mv){const h=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-hucre]');if(h)mobilTasi(d.id,+h.dataset.hucre).catch(()=>{});else render();return}
+  if(S.mobSec===d.id){S.mobSec=null;S.arm=null;openM({t:'table',tb:S.tables[d.id]});return}
+  if(S.mobSec){const h=d.el.closest('[data-hucre]');mobilTasi(S.mobSec,+h.dataset.hucre).catch(()=>{});return}
+  S.mobSec=d.id;render();
+});
+document.addEventListener('click',e=>{
+  const h=e.target.closest('[data-hucre]');if(!h||!S.mobSec||e.target.closest('[data-mdrag]'))return;
+  mobilTasi(S.mobSec,+h.dataset.hucre).catch(()=>{});
 });
 /* masa sürükleme */
 let drag=null;
